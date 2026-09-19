@@ -9,4 +9,4 @@ ALLOW_ORIGIN = "https://havban.github.io"
 [[d1_databases]]
 binding = "DB"
 database_name = "rhino-rex"
-database_id = "PASTE_DATABASE_ID_HERE"
+database_id = "ee2d3b9a-b666-4273-bdd8-5846fab26f57"

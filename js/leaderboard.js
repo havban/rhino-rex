@@ -7,7 +7,7 @@
  * the game.
  */
 
-export const API = '';        // e.g. 'https://rhino-rex-scores.<you>.workers.dev'
+export const API = 'https://rhino-rex-scores.hidayat-febiansyah.workers.dev';
 
 const TIMEOUT = 6000;
 let token = null;             // signed at run start, spent on submit
