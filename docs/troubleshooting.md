@@ -81,6 +81,16 @@ entity when they create it from a snapshot.
 No TURN server, so strict NATs fail. Nothing to do short of adding TURN. Check
 `pc.connectionState` on both ends before assuming a bug in the game.
 
+**The ▶ LANJUTKAN button never appears.**
+A save is only offered if it reached wave 2, is under 24 hours old, and the run
+was solo. Check `localStorage.getItem('rr.run')`. In tests, see the
+`addInitScript` trap in [testing.md](testing.md) — clearing storage on every
+navigation deletes the save before the reload that was meant to read it.
+
+**The revive prompt does not show.**
+It is offered once per run and only from wave 2. `__game._revives` holds what
+is left.
+
 ## Backend
 
 **Every request returns 403 `origin ditolak`.**
@@ -95,6 +105,12 @@ since both hash to the same address.
 The validator mirrors the spawn and scoring formulas in `js/config.js`. If you
 rebalance the game, update `spawnedThrough()` and `maxScore()` in the Worker to
 match, or real scores start bouncing.
+
+This has already happened once in the other direction: softening the early
+waves changed `WAVES.count()` while the Worker kept the old formula, so it
+believed wave 12 could spawn 145 rhinos when the game only spawns 106 — no
+false rejections, but a 37 % window for forged kill counts. Silent failures
+like that are why the check is worth re-deriving whenever balance moves.
 
 **`wrangler login` hangs or fails immediately.**
 It cannot work in a non-interactive shell: it logs `isInteractive: false` and

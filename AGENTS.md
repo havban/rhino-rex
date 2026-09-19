@@ -60,6 +60,7 @@ js/leaderboard.js     global leaderboard client (fails soft)
 js/net.js             WebRTC connection + data channels
 js/multiplayer.js     co-op session: replication and damage claims
 js/analytics.js       local stats panel + GoatCounter events
+js/update.js          notices a new deploy and offers a reload
 worker/               Cloudflare Worker + D1 schema (leaderboard + signalling)
 docs/                 documentation
 ```
@@ -136,11 +137,15 @@ Each of these was a real bug. Re-introducing them is easy.
 | Input mode | Any `keydown` used to switch off touch controls, so typing a leaderboard name removed the joystick with no way back. Ignore events from form fields; only game keys switch mode. |
 | Multiplayer | Guests must not run wave logic; snapshots carry the host's `restTimer` and will otherwise wake a second, local wave. Always key players by message id, never by connection. |
 | Particles | Emission must be per-second (`rate * dt`), not per-frame, or the effect changes with frame rate. |
+| Balance vs backend | The Worker's anti-cheat re-implements the spawn and scoring formulas. Change `WAVES.count()` or the score maths and you must update `spawnedThrough()` / `maxScore()` in `worker/src/index.js` and redeploy, or the check silently loosens. |
+| Playwright | `addInitScript` runs on **every** navigation. `localStorage.clear()` in there wipes the state a reload was supposed to prove persisted — it faked two bug reports already. |
 | GoatCounter | It never counts `localhost`, so local testing cannot dirty the dashboard — and cannot verify tracking either. |
 
 ## Tuning
 
 `js/config.js` holds every gameplay number: `REX`, `ATTACK`, `FIREBALL`,
-`RHINO`, `WAVES`, `SCENERY`, `CAMERA`, `IMPACT`, `WORLD`, `COLORS`. Change
+`RHINO`, `WAVES`, `SCENERY`, `CAMERA`, `IMPACT`, `PROGRESS`, `WORLD`,
+`COLORS`. Difficulty lives in `WAVES` (`count`, `damageScale`, `dropChance`);
+revives and saved runs live in `PROGRESS`. Change
 balance there, not in the systems. `__game.cfg` points at the same objects, so
 you can tune live in the console before committing a value.

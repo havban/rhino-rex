@@ -36,6 +36,8 @@ Useful extras: `--autoplay-policy=no-user-gesture-required` for audio tests.
 | `window.__stats()` | open the owner stats panel |
 | `window.__RR_API` | point the leaderboard/multiplayer client at another backend |
 | `window.__rrTrack` | capture analytics events instead of sending them |
+| `__game._saveRun()` / `_loadRun()` | write and read the resumable run directly |
+| `__game._revives` | how many free revives are left this run |
 
 A typical arrangement: freeze the world, pose the actors, then assert.
 
@@ -64,6 +66,16 @@ await page.evaluate(() => {
   ```
 - `offsetParent` is always `null` for `position: fixed`, so it is useless for
   visibility probes. Use `getBoundingClientRect()` and `getComputedStyle`.
+- **`addInitScript` runs on every navigation**, including `reload()`. Putting
+  `localStorage.clear()` in there wipes the state you are trying to test on the
+  very reload that should prove it persisted. This produced two false
+  failures — the visitor tracker and the saved run both looked broken when the
+  code was fine. Clear once, after the first load:
+  ```js
+  await page.goto(url);
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  ```
 - GoatCounter never counts `localhost`, so tracking cannot be verified locally.
 - Pointer lock engages in headless Chromium, which hides the on-screen pause
   button — expected, not a bug.
@@ -182,5 +194,7 @@ verified before anything touched production.
 4. Responsive sweep if UI changed.
 5. Two-page co-op run if netcode changed.
 6. `renderer.info` sanity: draw calls and triangles have not jumped.
-7. Push, wait for the Actions run, then verify against the **live URL** —
+7. If you changed the wave curve or scoring, update `spawnedThrough()` and
+   `maxScore()` in `worker/src/index.js` to match, and redeploy the Worker.
+8. Push, wait for the Actions run, then verify against the **live URL** —
    remembering the 10-minute Pages cache (`?v=2` bypasses it).

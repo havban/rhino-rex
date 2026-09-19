@@ -50,8 +50,10 @@ Every rejection below is covered by a test.
    run starts. A submission without a valid signature is refused, and the
    claimed duration may not exceed the token's age — so a score cannot be
    posted faster than it could be played.
-2. **Plausibility**, mirroring the rules in `js/config.js`:
+2. **Plausibility**, mirroring the rules in `js/config.js` — **these must be
+   re-derived whenever balance changes**, or the check quietly loosens:
    - kills ≤ everything that could have spawned up to that wave
+     (`spawnedThrough()`, mirroring `WAVES.count()`)
    - score ≤ `kills × 1800 + 120 × wave(wave+1)/2 + 1000` (every kill a
      Matriarch at max combo, every wave bonus collected)
    - `seconds ≥ 5 × (wave − 1)`

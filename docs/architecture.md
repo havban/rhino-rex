@@ -109,6 +109,22 @@ touch anywhere restores touch mode even when the pad is hidden.
 `input.scripted = true` makes `sample()` a no-op so tests can drive the fields
 directly.
 
+## Saved runs
+
+`Game._saveRun()` writes the *shape* of a run — wave, score, kills, health,
+fire, weapon tallies and the remaining revive — every five seconds, on each
+cleared wave, on pause, and on `pagehide`. It never stores the world.
+
+Resuming calls `start(saved)`, which sets `wave = saved.wave - 1` so the normal
+wave flow spawns that wave fresh. The deliberate consequence: you lose at most
+part of one wave, the save stays a few hundred bytes, and there is no risk of
+restoring a broken mid-charge world. Saves expire after 24 hours and are only
+offered from wave 2. Co-op runs are never saved — the host owns that state.
+
+One subtlety: a resumed run starts a **new** leaderboard token, and `seconds`
+is measured from the resume. Carrying the original elapsed time would exceed
+the new token's age and the Worker would reject the submission.
+
 ## Update notification
 
 There is no service worker. The deploy workflow stamps the commit into
@@ -137,3 +153,4 @@ Everything is `localStorage`, all keys prefixed `rr.`:
 | `rr.name` | last name entered |
 | `rr.stats` | lifetime play stats for the owner panel |
 | `rr.visit` | first seen / last seen / active days |
+| `rr.run` | the saved run offered as **▶ LANJUTKAN** |

@@ -40,11 +40,13 @@ async function ipHash(req, secret) {
 }
 
 // --------------------------------------------------------------- plausibility
-// Mirrors js/config.js: wave N spawns min(4 + floor(N * 1.4), 16) rhinos, plus
-// a matriarch every fifth wave.
+// Mirrors WAVES.count() in js/config.js: wave N spawns
+// min(3 + floor((N - 1) * 1.1), 16) rhinos, plus a matriarch every fifth wave.
+// KEEP THIS IN SYNC — if the game's curve changes and this does not, the check
+// either rejects honest scores or stops catching forged ones.
 function spawnedThrough(wave) {
   let total = 0;
-  for (let i = 1; i <= wave; i++) total += Math.min(4 + Math.floor(i * 1.4), 16) + (i % 5 === 0 ? 1 : 0);
+  for (let i = 1; i <= wave; i++) total += Math.min(3 + Math.floor((i - 1) * 1.1), 16) + (i % 5 === 0 ? 1 : 0);
   return total;
 }
 

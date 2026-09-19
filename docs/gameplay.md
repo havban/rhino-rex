@@ -44,9 +44,10 @@ camera-relative movement plus naive recentring spins forever.
 | Calf | 55 | 8.0 | 34 | 10 / 16 | — | 70 |
 | Bull | 90 | 6.2 | 30 | 16 / 26 | — | 100 |
 | Armored | 190 | 4.9 | 27 | 20 / 34 | 35 % | 190 |
-| Matriarch | 520 | 5.6 | 33 | 26 / 44 | 20 % | 900 |
+| Matriarch | 440 | 5.6 | 33 | 26 / 44 | 20 % | 900 |
 
-*Damage is melee gore / charge impact.*
+*Damage is melee gore / charge impact, before `WAVES.damageScale(wave)` is
+applied — see the ramp below.*
 
 ### Charge AI
 
@@ -110,9 +111,11 @@ until they come back.
 
 ## Death, revives and resuming
 
-Solo, the first death in a run offers **one free revive**: you stand back up
+Solo, the first death **from wave 2 onwards** offers **one free revive**: you
+stand back up
 with 60 HP, three seconds of invulnerability, and every rhino within 22 units
-thrown clear and stunned. The second death ends the run. In co-op there is no
+thrown clear and stunned. The second death ends the run. Dying on wave 1 skips
+the prompt entirely — that early, a fast restart beats a decision. In co-op there is no
 revive prompt — you are down for 6 seconds and respawn, and the run only ends
 when every player is down at once.
 

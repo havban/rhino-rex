@@ -43,6 +43,8 @@ attribute — and the module reads it from the DOM.
 | `weapon-<bite\|tail\|fire\|fireball>` | most-used weapon that run |
 | `boss-killed` | a Matriarch died that run |
 | `mode-solo` / `mode-coop` | which kind of run just started |
+| `run-resume` | a saved run was continued instead of started fresh |
+| `revive-offered` / `revive-taken` | the free revive was offered, and whether it was used |
 | `device-touch` / `device-desktop` | once per load, from `pointer: coarse` |
 | `screen-portrait` / `screen-landscape` | once, at the first run |
 | `quality-<low\|medium\|high>` | graphics preset actually in use, once |
