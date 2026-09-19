@@ -106,7 +106,11 @@ tapi tanpa custom event, atau Umami Cloud)? Hapus tagnya dan pasang
 - Kepala, kaki, dan tanduk dibentuk dari elipsoid dan kapsul ber-*smooth shading* dengan bahan
   Phong, jadi siluetnya membulat, bukan bersudut.
 - Efek api/debu memakai satu sistem partikel `THREE.Points` dengan shader kustom.
-- Suara disintesis lewat Web Audio API (tanpa file audio).
+- Suara **dan musik** disintesis lewat Web Audio API — tidak ada satu pun file audio.
+  Musiknya punya penjadwal 16-nada-per-birama dengan empat lapisan yang menyala mengikuti
+  keadaan permainan: tenang saat istirahat, perkusi masuk saat bertarung, melodi menyusul,
+  dan lapisan bawah tambahan saat Matriark muncul. Empat gaya bisa dipilih di menu
+  (**Musik**): Padang Ceria, Jurassic Stomp, Chiptune Rampage, Synthwave Predator, atau mati.
 - Situs statis murni: cukup buka `index.html` lewat web server apa pun.
 
 ### Menjalankan secara lokal
@@ -138,6 +142,7 @@ js/fx.js            # partikel, angka kerusakan, guncangan kamera
 js/camera.js        # kamera orang ketiga
 js/input.js         # keyboard/mouse/sentuh
 js/audio.js         # sound effect prosedural
+js/music.js         # musik latar prosedural (4 gaya, lapisan adaptif)
 ```
 
 Objek `window.__game` diekspos untuk debugging (`state`, `rex`, `rhinos`, `cfg`, ...).

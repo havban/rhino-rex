@@ -15,6 +15,10 @@ export class Audio {
     this.master = this.ctx.createGain();
     this.master.gain.value = 0.5;
     this.master.connect(this.ctx.destination);
+    // music rides its own bus so the picker can mute it without killing SFX
+    this.musicBus = this.ctx.createGain();
+    this.musicBus.gain.value = 1;
+    this.musicBus.connect(this.master);
     this.noiseBuf = this._noise(2);
   }
 

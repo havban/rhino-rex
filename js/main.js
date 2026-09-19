@@ -8,6 +8,7 @@ import { FX } from './fx.js';
 import { Input } from './input.js';
 import { ChaseCamera } from './camera.js';
 import { Audio } from './audio.js';
+import { Music } from './music.js';
 import { Fireball } from './fireball.js';
 import * as Scores from './scores.js';
 import * as Stats from './analytics.js';
@@ -24,6 +25,7 @@ class Game {
     this.canvas = $('scene');
     this.quality = localStorage.getItem('rr.quality') || (matchMedia('(max-width: 900px)').matches ? 'medium' : 'high');
     this.soundOn = localStorage.getItem('rr.sound') !== 'off';
+    this.musicStyle = localStorage.getItem('rr.music') || 'ceria';
     this.goreOn = localStorage.getItem('rr.gore') !== 'off';
 
     this.coarse = matchMedia('(pointer: coarse)').matches;
@@ -48,6 +50,7 @@ class Game {
     this.fx = new FX(this.scene, this.camera, $('fx-layer'));
     this.audio = new Audio();
     this.audio.setEnabled(this.soundOn);
+    this.music = null;          // built lazily: needs an AudioContext
     this.fx.gore = this.goreOn;
     this.input = new Input(this.canvas);
     this.input.onModeChange = (touch) => {
@@ -123,6 +126,7 @@ class Game {
       this.soundOn = !this.soundOn;
       this.audio.setEnabled(this.soundOn);
       localStorage.setItem('rr.sound', this.soundOn ? 'on' : 'off');
+      if (this.soundOn) this._startMusic();
       paintSound();
     });
 
@@ -150,6 +154,14 @@ class Game {
     });
     $('btn-save-score').addEventListener('click', () => this.saveScore());
     $('go-name').addEventListener('keydown', (e) => { if (e.code === 'Enter') this.saveScore(); });
+
+    const music = $('sel-music');
+    music.value = this.musicStyle;
+    music.addEventListener('change', () => {
+      this.musicStyle = music.value;
+      localStorage.setItem('rr.music', this.musicStyle);
+      this._startMusic(true);      // a change is a user gesture: preview it now
+    });
 
     const q = $('sel-quality');
     q.value = this.quality;
@@ -357,11 +369,31 @@ class Game {
     if (this.input.touchActive) this.wantFullscreen = true;
     this._goFullscreen();
     this.input.requestLock();
+    this._startMusic();
     this.banner('SIAP!', 'Badak datang…');
   }
 
   // Phones drop out of fullscreen whenever the app is backgrounded, so the
   // resume button has to ask for it again (it is a user gesture, so it works).
+  /** Boots the audio context on demand and plays the chosen track. */
+  _startMusic(preview = false) {
+    this.audio.init();
+    this.audio.resume();
+    if (!this.audio.ctx) return;
+    if (!this.music) this.music = new Music(this.audio.ctx, this.audio.musicBus);
+    if (this.musicStyle === 'off') { this.music.stop(0.4); return; }
+    this.music.setStyle(this.musicStyle);
+    this.music.setIntensity(preview ? 0.75 : this.music.intensity);
+    this.music.start();
+  }
+
+  _musicIntensity() {
+    if (this.state !== 'playing') return 0.25;
+    if (this.restTimer > 0) return 0.32;
+    if (this.rhinos.some((r) => r.alive && r.cfg.boss)) return 1;
+    return 0.6 + Math.min(this.wave, 12) / 12 * 0.18;
+  }
+
   _goFullscreen() {
     if (!this.wantFullscreen || document.fullscreenElement) return;
     document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).catch(() => {});
@@ -369,6 +401,7 @@ class Game {
 
   toMenu() {
     this.state = 'menu';
+    this.music?.stop(0.8);
     document.body.classList.remove('playing');
     document.exitPointerLock?.();
     $('menu').classList.remove('hidden');
@@ -384,11 +417,13 @@ class Game {
       this.rex.breathing = false;
       this.audio.flame(false);
       this.fx.stopFlame();
+      this.music?.setVolume(0.16);
       $('pause').classList.remove('hidden');
       document.exitPointerLock?.();
     } else if (!on && this.state === 'paused') {
       this.state = 'playing';
       $('pause').classList.add('hidden');
+      this.music?.setVolume(0.5);
       this._goFullscreen();
       this.input.requestLock();
     }
@@ -396,6 +431,7 @@ class Game {
 
   gameOver() {
     this.state = 'dead';
+    this.music?.stop(1.4);
     this.rex.breathing = false;
     this.audio.flame(false);
     this.fx.stopFlame();
@@ -684,6 +720,11 @@ class Game {
     this.time += dt;
     this.world.update(dt);
     this.world.followSun(this.rex.pos);
+    this._musicTimer = (this._musicTimer || 0) - dt;
+    if (this.music?.playing && this._musicTimer <= 0) {
+      this._musicTimer = 1.0;
+      this.music.setIntensity(this._musicIntensity());
+    }
     this.fx.update(dt);
     this._updatePickups(dt);
 
