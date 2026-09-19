@@ -97,6 +97,7 @@ class Game {
 
     Stats.install();     // GoatCounter counts the page view itself
     Stats.pageview();
+    Stats.trackVisitor();
     if (/[?&]stats=1/.test(location.search)) Stats.mountPanel();
     window.__stats = () => Stats.mountPanel();
 

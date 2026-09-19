@@ -100,6 +100,7 @@ export function event(name, title) {
 }
 
 const STATS_KEY = 'rr.stats';
+const VISIT_KEY = 'rr.visit';
 
 // ---------------------------------------------------------------- buckets --
 // Sent as event names, so the dashboard shows a distribution instead of a
@@ -110,6 +111,54 @@ const waveBucket = (w) =>
 const scoreBucket = (s) =>
   s >= 50000 ? '50k+' : s >= 20000 ? '20k-50k' : s >= 10000 ? '10k-20k'
   : s >= 5000 ? '5k-10k' : s >= 2000 ? '2k-5k' : s >= 500 ? '500-2k' : 'under-500';
+
+// ---------------------------------------------------------------- visitors --
+/**
+ * GoatCounter already de-duplicates *visits* server-side (a daily hash of IP +
+ * user agent), which is the "Visits" figure in the dashboard. What it cannot
+ * know is whether a browser has been here before, so we add that ourselves.
+ *
+ * No identifier is stored - only a first-seen date, a last-seen date and a
+ * count of distinct days - and at most one pair of events is sent per device
+ * per day, so the numbers read as "unique devices today".
+ */
+const dayBucket = (days) =>
+  days >= 20 ? '20+' : days >= 6 ? '6-19' : days >= 2 ? '2-5' : '1';
+
+function readVisit() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(VISIT_KEY) || 'null');
+    if (raw && raw.first && raw.last) return raw;
+  } catch { /* private mode */ }
+  return null;
+}
+
+export function visitor() {
+  return readVisit() || { first: null, last: null, days: 0 };
+}
+
+/** Call once per page load. Returns the (updated) visitor record. */
+export function trackVisitor() {
+  const today = new Date().toISOString().slice(0, 10);
+  const prev = readVisit();
+  let rec;
+  let fire = null;
+
+  if (!prev) {
+    rec = { first: today, last: today, days: 1 };
+    fire = ['visitor-new', 'Pengunjung baru'];
+  } else if (prev.last !== today) {
+    rec = { first: prev.first, last: today, days: (prev.days || 1) + 1 };
+    fire = ['visitor-returning', 'Pengunjung kembali'];
+  } else {
+    return prev;                       // already counted today; stay quiet
+  }
+
+  try { localStorage.setItem(VISIT_KEY, JSON.stringify(rec)); } catch { /* ignore */ }
+  event(fire[0], fire[1]);
+  if (rec.days > 1) event(`hari-aktif-${dayBucket(rec.days)}`, `Hari aktif: ${dayBucket(rec.days)}`);
+  return rec;
+}
 
 // ------------------------------------------------------------ local tally --
 const EMPTY = {
@@ -131,7 +180,10 @@ function writeStats(s) {
   try { localStorage.setItem(STATS_KEY, JSON.stringify(s)); } catch { /* private mode */ }
 }
 
-export function resetStats() { writeStats({ ...EMPTY }); }
+export function resetStats() {
+  writeStats({ ...EMPTY });
+  try { localStorage.removeItem(VISIT_KEY); } catch { /* ignore */ }
+}
 
 /** Folds one finished run into the local tally and pings the aggregate events. */
 export function recordRun(run) {
@@ -164,13 +216,16 @@ const fmtTime = (sec) => {
 
 export function renderPanel(el) {
   const s = stats();
+  const v = visitor();
   const w = s.weapons;
   const totalHits = Object.values(w).reduce((a, b) => a + b, 0) || 1;
   const row = (k, v) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`;
   el.innerHTML = `
     <h4>Statistik lokal <button id="stats-close" title="Tutup">×</button></h4>
     <table>
-      ${row('Sejak', s.firstSeen || '—')}
+      ${row('Sejak', v.first || s.firstSeen || '—')}
+      ${row('Kunjungan terakhir', v.last || '—')}
+      ${row('Hari aktif', v.days || 0)}
       ${row('Permainan', s.runs)}
       ${row('Waktu main', fmtTime(s.seconds))}
       ${row('Badak dikalahkan', s.kills)}
@@ -182,7 +237,7 @@ export function renderPanel(el) {
       ${Object.entries(w).map(([k, v]) => row(`&nbsp;&nbsp;${k}`, `${v} (${Math.round(v / totalHits * 100)}%)`)).join('')}
     </table>
     <button id="stats-reset">Reset statistik</button>
-    <p>${ENDPOINT ? 'Kiriman agregat: aktif' : 'Kiriman agregat: nonaktif (ENDPOINT kosong)'}</p>`;
+    <p>${endpoint() ? `Kiriman agregat: ${endpoint()}` : 'Kiriman agregat: nonaktif (tag GoatCounter tidak ada)'}</p>`;
   el.querySelector('#stats-close').onclick = () => el.classList.add('hidden');
   el.querySelector('#stats-reset').onclick = () => { resetStats(); renderPanel(el); };
 }
