@@ -998,7 +998,7 @@ class Game {
       if (this.state === 'menu') this.chase.orbit(dt, this.rex, this.time);
       else this.chase.update(dt, this.rex, this.world, this.fx.shakeAmount, this.zoom, null);
       if (this.state !== 'paused') this.rex.update(dt, IDLE_INPUT, this.chase.yaw, this.world);
-      for (const r of this.rhinos) if (!r.dead) r.faceBar(this.camera.quaternion);
+      for (const r of this.rhinos) if (!r.dead) r.faceBar(this.camera.quaternion, this.camera.position);
       return;
     }
 
@@ -1047,7 +1047,7 @@ class Game {
     } else {
       for (const r of this.rhinos) r.update(dt, this.rex, this.world, this.rhinos, this.fx);
     }
-    for (const r of this.rhinos) { if (!r.alive && !r._counted && !r.dead) this._onKill(r, 'dot'); if (!r.dead) r.faceBar(this.camera.quaternion); }
+    for (const r of this.rhinos) { if (!r.alive && !r._counted && !r.dead) this._onKill(r, 'dot'); if (!r.dead) r.faceBar(this.camera.quaternion, this.camera.position); }
     for (let i = this.rhinos.length - 1; i >= 0; i--) if (this.rhinos[i].dead) this.rhinos.splice(i, 1);
     if (this.rex.hp < hpBefore) { this.audio.hurt(); this._flashVignette(); }
 
@@ -1203,6 +1203,21 @@ class Game {
     $('txt-players').textContent = this.mp ? `👥 ${this.mp.playerCount}` : '';
     const left = this.livingRhinos().length;
     $('txt-left').textContent = this.restTimer > 0 ? `istirahat ${Math.ceil(this.restTimer)}s` : `${left} badak`;
+    // a matriarch gets a proper boss bar; her world-space one is easy to lose
+    // in a crowd
+    const boss = this.rhinos.find((r) => r.alive && r.cfg.boss);
+    const bossBar = $('bossbar');
+    if (boss) {
+      const f = clamp(boss.hp / boss.maxHp, 0, 1);
+      bossBar.classList.remove('hidden');
+      $('boss-fill').style.transform = `scaleX(${f})`;
+      this._bossGhost = f > (this._bossGhost ?? f) ? f : Math.max(f, (this._bossGhost ?? f) - 0.004);
+      $('boss-ghost').style.transform = `scaleX(${this._bossGhost})`;
+    } else {
+      bossBar.classList.add('hidden');
+      this._bossGhost = undefined;
+    }
+
     const combo = $('combo');
     if (this.rex.combo >= 2) {
       combo.classList.add('show');

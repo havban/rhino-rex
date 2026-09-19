@@ -88,6 +88,18 @@ Score per kill is the variant's value times a combo multiplier that grows
 a kill. Kills have a 22 % chance (100 % for a Matriarch) to drop a melon that
 restores 26 HP and 30 fire.
 
+## Reading enemy health
+
+Every living rhino carries a bar above its head, always visible — not only
+after it has been hit. The fill steps through three colours so danger is
+obvious at a glance: **green above 60 %, amber 30–60 %, red below 30 %**.
+A pale trail shows the chunk just removed, and quarter ticks make the
+proportion readable without counting pixels.
+
+Bars hold a roughly constant on-screen size with distance and fade out past
+95 units. A Matriarch also gets a full-width boss bar in the HUD, because hers
+is the health that decides the wave.
+
 ## Destructible scenery
 
 Trees and boulders inside the arena have health and come back later, so the

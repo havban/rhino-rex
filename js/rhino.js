@@ -9,6 +9,64 @@ const tmp = new THREE.Vector3();
 const tmp2 = new THREE.Vector3();
 
 function mat(color, opts = {}) { return new THREE.MeshLambertMaterial({ color, ...opts }); }
+
+/**
+ * Health bar drawn entirely in one fragment shader: frame, quarter ticks,
+ * a pale "recent damage" trail and the fill. One quad per rhino, so this is
+ * cheaper than the two plain planes it replaces and far easier to read.
+ */
+const BAR_VERT = `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+
+const BAR_FRAG = `
+varying vec2 vUv;
+uniform float frac;      // real health, 0..1
+uniform float ghost;     // lagging value, shows what was just lost
+uniform vec3 fill;
+uniform float alpha;
+void main() {
+  vec2 p = vUv;
+  // rounded-rect frame
+  float edgeY = min(p.y, 1.0 - p.y);
+  float edgeX = min(p.x, 1.0 - p.x) * 3.2;         // the bar is wide, keep corners tight
+  float edge = min(edgeX, edgeY);
+  if (edge < 0.08) { gl_FragColor = vec4(0.10, 0.07, 0.05, 0.92 * alpha); return; }
+
+  vec3 col = vec3(0.13, 0.10, 0.08);               // empty track
+  if (p.x < ghost) col = vec3(1.0, 0.86, 0.55);    // damage just taken
+  if (p.x < frac)  col = fill;
+
+  // quarter ticks, so a glance reads the proportion
+  float t = min(min(abs(p.x - 0.25), abs(p.x - 0.5)), abs(p.x - 0.75));
+  if (t < 0.006 && edgeY > 0.2) col *= 0.45;
+
+  gl_FragColor = vec4(col, alpha);
+}`;
+
+function makeBarMaterial() {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      frac: { value: 1 },
+      ghost: { value: 1 },
+      fill: { value: new THREE.Color(0x5ada57) },
+      alpha: { value: 1 },
+    },
+    vertexShader: BAR_VERT,
+    fragmentShader: BAR_FRAG,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+  });
+}
+
+// Green while healthy, amber when it matters, red when one more hit does it.
+const BAR_GREEN = new THREE.Color(0x5ada57);
+const BAR_AMBER = new THREE.Color(0xffc23d);
+const BAR_RED = new THREE.Color(0xf2452f);
 function box(w, h, d, color, flat = true) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, { flatShading: flat }));
   m.castShadow = true;
@@ -209,24 +267,24 @@ export class Rhino {
 
     // ---- health bar -----------------------------------------------------------
     const bar = new THREE.Group();
-    bar.position.y = 4.4 * (this.cfg.boss ? 1.2 : 1);
+    // `root` is scaled per variant, so a constant local height would leave a
+    // matriarch's bar floating two units above her head. Keep the gap fixed in
+    // world units instead.
+    bar.position.y = 3.2 + 1.1 / v.scale;
+    // the group hangs off `root`, which is scaled per variant - undo that so a
+    // calf's bar is not tiny and a matriarch's is not a billboard
+    this.barBase = (this.cfg.boss ? 1.5 : 1) / v.scale;
+    bar.scale.setScalar(this.barBase);
     root.add(bar);
-    const bg = new THREE.Mesh(
-      new THREE.PlaneGeometry(3.0, 0.36),
-      new THREE.MeshBasicMaterial({ color: 0x2b1f16, transparent: true, opacity: 0.55, depthTest: false })
-    );
-    bg.renderOrder = 10;
-    bar.add(bg);
-    const fill = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.84, 0.22),
-      new THREE.MeshBasicMaterial({ color: 0x64e06a, depthTest: false })
-    );
-    fill.position.z = 0.01;
-    fill.renderOrder = 11;
-    bar.add(fill);
+
+    this.barMat = makeBarMaterial();
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.46), this.barMat);
+    plate.renderOrder = 12;
+    bar.add(plate);
+
     this.bar = bar;
-    this.barFill = fill;
-    this.barBg = bg;
+    this.barFill = plate;          // kept for older callers
+    this.barGhost = 1;
 
     this.frontAnchor = new THREE.Object3D();
     this.frontAnchor.position.set(0, -1.55, 2.1);
@@ -506,12 +564,14 @@ export class Rhino {
     this.tail.rotation.y = Math.sin(this.phase * 5) * 0.4;
     this.tail.rotation.x = -0.3 + Math.sin(this.phase * 3) * 0.1;
 
-    // health bar
+    // health bar: always on while alive, with the lost chunk trailing behind
     const frac = THREE.MathUtils.clamp(this.hp / this.maxHp, 0, 1);
-    this.barFill.scale.x = Math.max(frac, 0.001);
-    this.barFill.position.x = -(1 - frac) * 1.42;
-    this.barFill.material.color.setHSL(0.33 * frac, 0.75, 0.52);
-    this.bar.visible = frac < 0.999 || this.cfg.boss === true;
+    this.barGhost = frac > this.barGhost ? frac : Math.max(frac, this.barGhost - dt * 0.55);
+    const u = this.barMat.uniforms;
+    u.frac.value = frac;
+    u.ghost.value = this.barGhost;
+    u.fill.value.copy(frac > 0.6 ? BAR_GREEN : frac > 0.3 ? BAR_AMBER : BAR_RED);
+    this.bar.visible = true;
 
     // hit flash / burning glow
     const f = this.flash;
@@ -523,8 +583,15 @@ export class Rhino {
     }
   }
 
-  faceBar(camQuat) {
-    if (this.bar.visible) this.bar.quaternion.copy(camQuat).premultiply(this._invRoot());
+  /** Billboard the bar and hold its apparent size roughly steady with range. */
+  faceBar(camQuat, camPos) {
+    if (!this.bar.visible) return;
+    this.bar.quaternion.copy(camQuat).premultiply(this._invRoot());
+    if (!camPos) return;
+    const d = Math.hypot(camPos.x - this.pos.x, camPos.z - this.pos.z);
+    const grow = THREE.MathUtils.clamp(d / 26, 0.85, 2.4);
+    this.bar.scale.setScalar(this.barBase * grow);
+    this.barMat.uniforms.alpha.value = d > 95 ? Math.max(0, 1 - (d - 95) / 25) : 1;
   }
 
   _invRoot() {
@@ -536,6 +603,7 @@ export class Rhino {
     this.scene.remove(this.root);
     this.root.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
     for (const k in this.mats) this.mats[k].dispose?.();
+    this.barMat.dispose();
   }
 }
 

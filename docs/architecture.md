@@ -45,6 +45,13 @@ single directional light plus hemisphere and ambient fill, ACES tone mapping
 and PCF soft shadows. The shadow frustum follows the player (`world.followSun`)
 so it stays sharp over a 300-unit arena.
 
+Each rhino's health bar is a **single quad with a fragment shader** that draws
+the frame, quarter ticks, the pale "damage just taken" trail and the fill —
+cheaper than the two plain planes it replaced, and legible at range. It is
+billboarded and counter-scaled against both the variant's size and the camera
+distance, so a calf's bar is not a speck and a Matriarch's is not a hoarding.
+A Matriarch additionally gets a DOM boss bar in the HUD.
+
 Typical scene at wave 12: **~400 draw calls, ~190k triangles**. Grass and
 flowers are `InstancedMesh`; particles are a single `Points` with a custom
 shader; damage numbers are DOM elements projected to screen space.
