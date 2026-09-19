@@ -13,6 +13,8 @@ import { Fireball } from './fireball.js';
 import * as Scores from './scores.js';
 import * as Stats from './analytics.js';
 import * as Global from './leaderboard.js';
+import { Net } from './net.js';
+import { Session } from './multiplayer.js';
 
 const $ = (id) => document.getElementById(id);
 const clamp = THREE.MathUtils.clamp;
@@ -73,6 +75,9 @@ class Game {
     this.time = 0;
     this.wantFullscreen = false;
     this.run = null;                 // per-run tally, folded into the stats on death
+    this.mp = null;                  // co-op session, null when playing solo
+    this._respawn = 0;
+    this._pickupId = 0;
     this._buffered = { bite: 0, tail: 0, fireball: 0 };
     this.clock = new THREE.Clock();
 
@@ -141,6 +146,13 @@ class Game {
       paintGore();
     });
 
+    $('btn-coop').addEventListener('click', () => this.showLobby());
+    $('btn-lobby-close').addEventListener('click', () => { this.leaveCoop(); $('lobby').classList.add('hidden'); });
+    $('btn-host').addEventListener('click', () => this.hostCoop());
+    $('btn-join').addEventListener('click', () => this.joinCoop());
+    $('btn-coop-start').addEventListener('click', () => { $('lobby').classList.add('hidden'); this.start(); });
+    $('lobby-code').addEventListener('keydown', (e) => { if (e.code === 'Enter') this.joinCoop(); });
+
     $('btn-scores').addEventListener('click', () => this.showScores());
     $('btn-go-scores').addEventListener('click', () => this.showScores());
     $('btn-scores-close').addEventListener('click', () => $('scores').classList.add('hidden'));
@@ -187,6 +199,94 @@ class Game {
 
     const rotate = $('rotate');
     rotate?.addEventListener('click', () => rotate.classList.add('dismissed'));
+  }
+
+  // ------------------------------------------------------------- co-op ----
+  showLobby() {
+    const ok = Global.available();
+    $('lobby').classList.remove('hidden');
+    $('lobby-offline').classList.toggle('hidden', ok);
+    $('lobby-forms').classList.toggle('hidden', !ok);
+    this._lobbyStatus(ok ? 'Buat room lalu bagikan kodenya, atau masukkan kode teman.' : '');
+  }
+
+  _lobbyStatus(text, kind = '') {
+    const el = $('lobby-status');
+    el.textContent = text;
+    el.className = `status ${kind}`;
+  }
+
+  _lobbyRoster() {
+    const names = [this.net?.self.name || 'Kamu'];
+    if (this.mp) for (const p of this.mp.players.values()) names.push(p.name);
+    $('lobby-roster').textContent = names.length > 1
+      ? `Pemain: ${names.join(', ')}`
+      : 'Pemain: kamu (menunggu teman…)';
+    $('btn-coop-start').classList.toggle('hidden', !(this.mp && this.mp.isHost));
+  }
+
+  _newSession() {
+    this.net = new Net(Global.base());
+    this.net.onStatus = (text, kind) => { this._lobbyStatus(text, kind); this._lobbyRoster(); };
+    this.mp = new Session(this, this.net);
+    const join = this.net.onPeerJoin, leave = this.net.onPeerLeave;
+    this.net.onPeerJoin = (p) => { join(p); this._lobbyRoster(); };
+    this.net.onPeerLeave = (p) => { leave(p); this._lobbyRoster(); };
+    return this.mp;
+  }
+
+  async hostCoop() {
+    try {
+      this._newSession();
+      this.net.self.name = Scores.lastName() || 'Tuan rumah';
+      const code = await this.net.host(this.net.self.name);
+      $('lobby-mycode').textContent = code;
+      $('lobby-mycode').parentElement.classList.remove('hidden');
+      this._lobbyStatus(`Room ${code} siap. Bagikan kodenya, lalu tekan Mulai.`, 'good');
+      this._lobbyRoster();
+    } catch (err) {
+      this._lobbyStatus(`Gagal membuat room: ${err.message}`, 'bad');
+      this.leaveCoop();
+    }
+  }
+
+  async joinCoop() {
+    const code = $('lobby-code').value.trim().toUpperCase();
+    if (code.length < 4) { this._lobbyStatus('Masukkan kode 4 huruf.', 'bad'); return; }
+    try {
+      this._newSession();
+      this.net.self.name = Scores.lastName() || 'Tamu';
+      this._lobbyStatus('Menyambung…');
+      await this.net.join(code, this.net.self.name);
+      this._lobbyStatus('Tersambung! Menunggu tuan rumah memulai…', 'good');
+      this._lobbyRoster();
+      this._waitForHost();
+    } catch (err) {
+      this._lobbyStatus(`Gagal bergabung: ${err.message}`, 'bad');
+      this.leaveCoop();
+    }
+  }
+
+  /** Guests drop into the world as soon as the host's snapshots arrive. */
+  _waitForHost() {
+    const check = () => {
+      if (!this.mp || this.mp.isHost) return;
+      if (this.state !== 'playing' && this.mp.remoteWave) {
+        $('lobby').classList.add('hidden');
+        this.start();
+        return;
+      }
+      setTimeout(check, 400);
+    };
+    setTimeout(check, 400);
+  }
+
+  leaveCoop() {
+    if (!this.mp) return;
+    this.mp.destroy();
+    this.mp = null;
+    this.net = null;
+    $('lobby-mycode').parentElement.classList.add('hidden');
   }
 
   _paintBest() {
@@ -359,7 +459,8 @@ class Game {
     this.wave = 0;
     this.score = 0;
     this.kills = 0;
-    this.restTimer = 2.2;
+    this._respawn = 0;
+    this.restTimer = this.mp && !this.mp.isHost ? 9e9 : 2.2;
     this.run = { t0: performance.now(), bosses: 0, weapons: { bite: 0, tail: 0, fire: 0, fireball: 0 } };
     this._buffered = { bite: 0, tail: 0, fireball: 0 };
     Stats.event('run-start', 'Permainan dimulai');
@@ -406,6 +507,7 @@ class Game {
 
   toMenu() {
     this.state = 'menu';
+    this.leaveCoop();
     this.music?.stop(0.8);
     document.body.classList.remove('playing');
     document.exitPointerLock?.();
@@ -511,6 +613,7 @@ class Game {
     const boss = plan.includes('matriarch');
     this.banner(`GELOMBANG ${this.wave}`, boss ? '⚠️ MATRIARK BADAK MUNCUL!' : `${plan.length} badak menyerbu`);
     this.audio.wave();
+    this.mp?.announceWave(this.wave, plan.length, boss);
   }
 
   livingRhinos() { return this.rhinos.filter((r) => r.alive); }
@@ -529,8 +632,13 @@ class Game {
       if (fwd.dot(to) < Math.cos(cfg.halfAngle)) continue;
       const opts = { knock: to, knockStrength: cfg.knockback };
       if (type === 'tail') opts.stun = cfg.stun;
-      const dealt = r.takeDamage(cfg.damage, opts);
-      this._registerHit(r, dealt, type, to);
+      if (this.mp && !this.mp.isHost) {
+        this.mp.claimHit(r, cfg.damage, type, to);       // the host is the judge
+        this._registerHit(r, cfg.damage, type, to);      // local feedback only
+      } else {
+        const dealt = r.takeDamage(cfg.damage, opts);
+        this._registerHit(r, dealt, type, to);
+      }
       if (this.run) this.run.weapons[type] += 1;
       hits++;
     }
@@ -606,6 +714,7 @@ class Game {
 
   _explode(pos, direct) {
     this.fx.blast(pos);
+    this.mp?.broadcastFx('blast', pos);
     this.fx.shake(1.1);
     this.audio.stomp();
     this.audio.crunch();
@@ -762,9 +871,10 @@ class Game {
       if (this._buffered[k] <= 0) continue;
       this._buffered[k] -= dt;
       if (k === 'bite') {
-        if (this.rex.startAttack('bite')) { this._buffered.bite = 0; this.audio.bite(); }
+        if (this.rex.startAttack('bite')) { this._buffered.bite = 0; this.audio.bite(); this.mp?.sendAttack('bite'); }
       } else if (k === 'tail') {
-        if (this.rex.startAttack('tail', this._aimYaw(ATTACK.tail.aimRange))) { this._buffered.tail = 0; this.audio.tail(); }
+        const aim = this._aimYaw(ATTACK.tail.aimRange);
+        if (this.rex.startAttack('tail', aim)) { this._buffered.tail = 0; this.audio.tail(); this.mp?.sendAttack('tail', aim); }
       } else if (this.rex.canFireball() && this.rex.startAttack('fireball')) {
         this._buffered.fireball = 0;
         this.rex.fire -= FIREBALL.cost;
@@ -782,12 +892,44 @@ class Game {
 
     // ---- enemies ----
     const hpBefore = this.rex.hp;
-    for (const r of this.rhinos) r.update(dt, this.rex, this.world, this.rhinos, this.fx);
+    if (this.mp && !this.mp.isHost) {
+      for (const r of this.rhinos) r.updateRemote(dt);     // the host simulates them
+    } else if (this.mp) {
+      const targets = this.mp.targets();
+      for (const r of this.rhinos) r.update(dt, this._nearest(targets, r.pos), this.world, this.rhinos, this.fx);
+    } else {
+      for (const r of this.rhinos) r.update(dt, this.rex, this.world, this.rhinos, this.fx);
+    }
     for (const r of this.rhinos) { if (!r.alive && !r._counted && !r.dead) this._onKill(r, 'dot'); if (!r.dead) r.faceBar(this.camera.quaternion); }
     for (let i = this.rhinos.length - 1; i >= 0; i--) if (this.rhinos[i].dead) this.rhinos.splice(i, 1);
     if (this.rex.hp < hpBefore) { this.audio.hurt(); this._flashVignette(); }
 
-    // ---- wave flow ----
+    // ---- co-op: session traffic, respawns instead of a hard game over ----
+    if (this.mp) {
+      this.mp.update(dt);
+      if (!this.rex.alive) {
+        if (this._respawn <= 0) {
+          this._respawn = 6;
+          this.banner('TUMBANG!', 'Bangkit lagi dalam 6 detik…');
+        } else {
+          this._respawn -= dt;
+          if (this._respawn <= 0) this._revive();
+        }
+      }
+      if (this.mp.isHost && !this.rex.alive && [...this.mp.players.values()].every((p) => p.downed)) {
+        this.mp.net.send({ t: 'over' }, 'evt');
+        this.gameOver();
+        return;
+      }
+    }
+
+    // ---- wave flow (host only: snapshots carry the host's rest timer, and a
+    // guest running this would spawn a second, local set of rhinos) ----
+    if (this.mp && !this.mp.isHost) {
+      this.chase.update(dt, this.rex, this.world, this.fx.shakeAmount, this.zoom, input.move);
+      this._updateHud();
+      return;
+    }
     if (this.restTimer > 0) {
       this.restTimer -= dt;
       if (this.restTimer <= 0) this.nextWave();
@@ -799,8 +941,17 @@ class Game {
     }
 
     this.chase.update(dt, this.rex, this.world, this.fx.shakeAmount, this.zoom, input.move);
-    if (!this.rex.alive) this.gameOver();
+    if (!this.rex.alive && !this.mp) this.gameOver();
     this._updateHud();
+  }
+
+  _nearest(list, pos) {
+    let best = list[0], bd = Infinity;
+    for (const p of list) {
+      const d = (p.pos.x - pos.x) ** 2 + (p.pos.z - pos.z) ** 2;
+      if (d < bd) { bd = d; best = p; }
+    }
+    return best;
   }
 
   _updatePickups(dt) {
@@ -826,6 +977,19 @@ class Game {
     }
   }
 
+  _revive() {
+    const rex = this.rex;
+    rex.alive = true;
+    rex.hp = 60;
+    rex.fire = REX.maxFire;
+    rex.vel.set(0, 0, 0);
+    rex.invuln = 2.5;
+    rex.resetPose();
+    const a = Math.random() * Math.PI * 2;
+    rex.pos.set(Math.cos(a) * 26, 0, Math.sin(a) * 26);
+    this.banner('BANGKIT!', 'Kembali berburu');
+  }
+
   _flashVignette() {
     const v = $('vignette');
     v.classList.remove('flash');
@@ -840,8 +1004,10 @@ class Game {
     $('bar-hp').style.background = hp > 0.5 ? 'linear-gradient(90deg,#7bf07a,#39c95b)' : hp > 0.25 ? 'linear-gradient(90deg,#ffd36b,#ff9f43)' : 'linear-gradient(90deg,#ff8a8a,#e74040)';
     $('bar-fire').style.transform = `scaleX(${fire})`;
     $('txt-hp').textContent = Math.ceil(this.rex.hp);
-    $('txt-wave').textContent = String(Math.max(1, this.wave));
-    $('txt-score').textContent = this.score.toLocaleString('id-ID');
+    $('txt-wave').textContent = String(Math.max(1, this.mp && !this.mp.isHost ? this.mp.remoteWave : this.wave));
+    const shownScore = this.mp && !this.mp.isHost ? this.mp.remoteScore : this.score;
+    $('txt-score').textContent = shownScore.toLocaleString('id-ID');
+    $('txt-players').textContent = this.mp ? `👥 ${this.mp.playerCount}` : '';
     const left = this.livingRhinos().length;
     $('txt-left').textContent = this.restTimer > 0 ? `istirahat ${Math.ceil(this.restTimer)}s` : `${left} badak`;
     const combo = $('combo');

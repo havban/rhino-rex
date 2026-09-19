@@ -169,7 +169,18 @@ body.locked #btn-pause { display: none; }
   z-index: 20;
 }
 /* opened on top of the menu *and* of the game-over card, both z-index 20 */
-#scores { z-index: 22; }
+#scores, #lobby { z-index: 22; }
+
+.code-line { margin: 12px 0; font-size: 15px; color: var(--ink-soft); }
+.code-line b {
+  display: inline-block; font-family: ui-monospace, Menlo, monospace; font-size: 30px; letter-spacing: .32em;
+  color: var(--sun-deep); background: #fff6e3; border: 2px dashed #ffcf8f; border-radius: 12px;
+  padding: 4px 6px 4px 16px; margin-left: 6px;
+}
+#lobby .entry-row { margin-top: 12px; }
+#lobby-code { text-align: center; letter-spacing: .3em; text-transform: uppercase; font-family: ui-monospace, Menlo, monospace; }
+#btn-coop-start { margin-top: 12px; }
+#lobby .ghost { margin-top: 10px; }
 
 .card {
   width: min(680px, 94vw);

@@ -83,6 +83,30 @@ function cleanName(name) {
   return stripped || 'Pemburu';
 }
 
+
+// ------------------------------------------------------- multiplayer rooms
+// Signalling only: two peers swap an SDP offer/answer through these rows and
+// then talk to each other directly. Plain polling, so no Durable Objects and
+// no WebSockets are needed - it runs on the free plan.
+const ROOM_TTL = 2 * 3600;          // rooms older than this are swept away
+const CODE_CHARS = 'ACDEFGHJKLMNPQRTUVWXY3468';
+
+function roomCode() {
+  let out = '';
+  const r = crypto.getRandomValues(new Uint8Array(4));
+  for (let i = 0; i < 4; i++) out += CODE_CHARS[r[i] % CODE_CHARS.length];
+  return out;
+}
+
+const peerId = () => hex(crypto.getRandomValues(new Uint8Array(8)));
+
+async function sweep(env, now) {
+  // cheap opportunistic cleanup; no cron needed
+  if (Math.random() > 0.08) return;
+  await env.DB.prepare('DELETE FROM rooms WHERE seen_at < ?').bind(now - ROOM_TTL).run();
+  await env.DB.prepare('DELETE FROM peers WHERE created_at < ?').bind(now - ROOM_TTL).run();
+}
+
 // ------------------------------------------------------------------ plumbing
 function cors(env, req) {
   const allow = env.ALLOW_ORIGIN || '*';
@@ -177,6 +201,86 @@ export default {
           .bind(Math.round(body.score))
           .first();
         return json({ ok: true, rank: (above && above.n || 0) + 1, name }, {}, head);
+      }
+
+
+      // ---- multiplayer signalling -----------------------------------------
+      if (url.pathname.startsWith('/mp/')) {
+        const now = Math.floor(Date.now() / 1000);
+        await sweep(env, now);
+        const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
+        const seg = url.pathname.split('/').filter(Boolean);   // ['mp', ...]
+
+        // host opens a room -> { code, host }
+        if (req.method === 'POST' && seg[1] === 'room' && seg.length === 2) {
+          const host = peerId();
+          for (let tries = 0; tries < 6; tries++) {
+            const code = roomCode();
+            const clash = await env.DB.prepare('SELECT code FROM rooms WHERE code = ?').bind(code).first();
+            if (clash) continue;
+            await env.DB
+              .prepare('INSERT INTO rooms (code, host, name, created_at, seen_at) VALUES (?, ?, ?, ?, ?)')
+              .bind(code, host, cleanName(body.name), now, now)
+              .run();
+            return json({ code, host }, {}, head);
+          }
+          return json({ error: 'kode room habis, coba lagi' }, { status: 503 }, head);
+        }
+
+        // guest knocks on the door -> { peer }
+        if (req.method === 'POST' && seg[1] === 'join' && seg[2]) {
+          const code = seg[2].toUpperCase();
+          const room = await env.DB.prepare('SELECT code, closed FROM rooms WHERE code = ?').bind(code).first();
+          if (!room) return json({ error: 'room tidak ditemukan' }, { status: 404 }, head);
+          if (room.closed) return json({ error: 'room sudah ditutup' }, { status: 410 }, head);
+          const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM peers WHERE code = ?').bind(code).first();
+          if ((count && count.n || 0) >= 8) return json({ error: 'room penuh' }, { status: 409 }, head);
+          const id = peerId();
+          await env.DB
+            .prepare('INSERT INTO peers (id, code, name, created_at) VALUES (?, ?, ?, ?)')
+            .bind(id, code, cleanName(body.name), now)
+            .run();
+          return json({ peer: id }, {}, head);
+        }
+
+        // host polls for guests waiting for an offer
+        if (req.method === 'GET' && seg[1] === 'peers' && seg[2]) {
+          const code = seg[2].toUpperCase();
+          await env.DB.prepare('UPDATE rooms SET seen_at = ? WHERE code = ?').bind(now, code).run();
+          const { results } = await env.DB
+            .prepare('SELECT id, name, offer IS NOT NULL AS offered, answer IS NOT NULL AS answered, answer FROM peers WHERE code = ? ORDER BY created_at')
+            .bind(code)
+            .all();
+          return json({ peers: results || [] }, {}, head);
+        }
+
+        // host posts its offer for one guest / guest posts its answer
+        if (req.method === 'POST' && seg[1] === 'sdp' && seg[2]) {
+          const id = seg[2];
+          const row = await env.DB.prepare('SELECT id FROM peers WHERE id = ?').bind(id).first();
+          if (!row) return json({ error: 'peer tidak dikenal' }, { status: 404 }, head);
+          const sdp = String(body.sdp || '');
+          if (sdp.length > 60000) return json({ error: 'sdp terlalu besar' }, { status: 413 }, head);
+          const col = body.kind === 'answer' ? 'answer' : 'offer';
+          await env.DB.prepare(`UPDATE peers SET ${col} = ? WHERE id = ?`).bind(sdp, id).run();
+          return json({ ok: true }, {}, head);
+        }
+
+        // guest polls for the offer aimed at it
+        if (req.method === 'GET' && seg[1] === 'sdp' && seg[2]) {
+          const row = await env.DB.prepare('SELECT offer, answer, code FROM peers WHERE id = ?').bind(seg[2]).first();
+          if (!row) return json({ error: 'peer tidak dikenal' }, { status: 404 }, head);
+          const room = await env.DB.prepare('SELECT closed FROM rooms WHERE code = ?').bind(row.code).first();
+          return json({ offer: row.offer || null, answer: row.answer || null, closed: !!(room && room.closed) }, {}, head);
+        }
+
+        // host closes the room once everyone is connected (or on quit)
+        if (req.method === 'POST' && seg[1] === 'close' && seg[2]) {
+          await env.DB.prepare('UPDATE rooms SET closed = 1 WHERE code = ?').bind(seg[2].toUpperCase()).run();
+          return json({ ok: true }, {}, head);
+        }
+
+        return json({ error: 'rute mp tidak dikenal' }, { status: 404 }, head);
       }
 
       return json({ error: 'tidak ditemukan' }, { status: 404 }, head);

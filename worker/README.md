@@ -42,6 +42,27 @@ export const API = 'https://rhino-rex-scores.<subdomain>.workers.dev';
 Selesai — tab **Global** di papan skor langsung hidup. Selama `API` kosong,
 permainan tetap jalan memakai papan lokal saja dan tidak menghubungi apa pun.
 
+## Rute multiplayer
+
+Worker yang sama juga memperantarai jabat tangan WebRTC untuk mode co-op:
+
+```
+POST /mp/room        -> { code }    tuan rumah membuka room
+POST /mp/join/:code  -> { peer }    tamu mengetuk pintu
+GET  /mp/peers/:code -> { peers }   tuan rumah melihat siapa yang menunggu
+POST /mp/sdp/:peer   -> { ok }      kirim offer (tuan rumah) atau answer (tamu)
+GET  /mp/sdp/:peer   -> { offer, answer, closed }
+POST /mp/close/:code -> { ok }
+```
+
+Semuanya polling HTTP biasa — tanpa WebSocket dan tanpa Durable Objects — jadi tetap muat
+di paket gratis. Barisnya berumur pendek dan dibersihkan sendiri setelah 2 jam. Setelah
+jabat tangan selesai, seluruh lalu lintas permainan langsung antar-peramban dan tidak
+menyentuh Worker sama sekali.
+
+Jangan lupa jalankan ulang `schema.sql` setelah menarik pembaruan ini: ada dua tabel baru
+(`rooms` dan `peers`).
+
 ## Batas gratis
 
 Worker gratis: 100.000 permintaan/hari. D1 gratis: 5 GB, 5 juta baris dibaca dan

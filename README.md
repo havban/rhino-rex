@@ -59,6 +59,37 @@ tombol bulat di kanan untuk menyerang, lompat, dan lari, tombol **II** di atas u
 Layar masuk mode layar-penuh saat permainan dimulai, dan kembali penuh saat kamu menekan
 "Lanjut" setelah jeda. Di laptop ada tombol **⛶ Layar penuh** di menu. Mode lanskap paling lega, tapi potret tetap jalan.
 
+## Main bersama (co-op online)
+
+Dua sampai empat pemain melawan kawanan yang sama. Menu → **👥 Main Bersama** → *Buat Room*
+memberi kode empat huruf; teman memasukkan kode itu untuk bergabung.
+
+Pembagian tugasnya sengaja sederhana — model "teman yang dipercaya":
+
+| | Pemilik |
+| --- | --- |
+| Posisi dan nyawa tiap dinosaurus | pemain itu sendiri |
+| Badak, gelombang, dan skor | tuan rumah |
+
+Tamu tidak menghitung kerusakan sendiri; mereka *mengklaim* ke tuan rumah ("aku menggigit
+badak #7 sebesar 26") dan tuan rumah yang memutuskan. Tamu bisa saja berbohong — tapi tamu
+juga bisa mengedit permainannya sendiri, dan ini co-op dengan orang yang kamu undang lewat
+kode room, jadi tidak perlu lebih dari ini.
+
+Lalu lintas permainannya **langsung antar-peramban** lewat WebRTC: Worker hanya
+memperantarai jabat tangan (polling HTTP biasa, tanpa WebSocket dan tanpa Durable Objects),
+sehingga tetap muat di paket gratis dan tidak ada biaya per-paket. Tanpa server TURN,
+sebagian kecil jaringan ketat memang gagal menyambung — lobinya melaporkan itu, bukan
+menggantung.
+
+Kalau kamu tumbang, kamu bangkit lagi setelah 6 detik. Permainan baru berakhir kalau semua
+pemain tumbang bersamaan. Mode ini butuh `API` di `js/leaderboard.js` terisi (Worker yang
+sama dengan papan skor global) — kalau kosong, tombolnya menjelaskan itu dan permainan solo
+tetap jalan seperti biasa.
+
+Yang belum: buah semangka penyembuh belum direplikasi (hanya tuan rumah yang melihatnya),
+dan belum ada mode lawan-lawanan.
+
 ## Statistik & analitik
 
 Ada dua lapis, dan keduanya terpisah.
@@ -136,6 +167,8 @@ js/geom.js          # pembangun permukaan halus (sapuan tabung, elipsoid, kapsul
 js/fireball.js      # proyektil bola api (lintasan melengkung + ledakan)
 js/scores.js        # papan skor lokal (localStorage)
 js/leaderboard.js   # klien papan skor global (gagal-lunak)
+js/net.js           # sambungan WebRTC + kanal data (jabat tangan lewat Worker)
+js/multiplayer.js   # sesi co-op: replikasi pemain, badak, dan klaim kerusakan
 worker/             # Cloudflare Worker + skema D1 untuk papan global
 js/analytics.js     # statistik lokal + kiriman agregat opsional (mati bawaan)
 js/fx.js            # partikel, angka kerusakan, guncangan kamera

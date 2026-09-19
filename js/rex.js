@@ -51,6 +51,9 @@ export class Rex {
     this.kills = 0;
     this.combo = 0;
     this.comboTimer = 0;
+    this.remote = false;          // networked twin: posed from snapshots
+    this.net = { x: 0, z: 0, yaw: 0, speed: 0 };
+    this.takenDamage = 0;         // drained by the host and sent to its owner
     this._build();
   }
 
@@ -380,6 +383,30 @@ export class Rex {
     this.headBone.rotation.x = POSE.head;
   }
 
+  /** Ease a networked player towards the last pose we heard about. */
+  updateRemote(dt) {
+    const k = 1 - Math.exp(-12 * dt);
+    const before = { x: this.pos.x, z: this.pos.z };
+    this.pos.x += (this.net.x - this.pos.x) * k;
+    this.pos.z += (this.net.z - this.pos.z) * k;
+    let d = this.net.yaw - this.yaw;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    this.yaw += d * k;
+    this.speed = Math.hypot(this.pos.x - before.x, this.pos.z - before.z) / Math.max(dt, 1e-4);
+
+    for (const key in this.cooldown) this.cooldown[key] = Math.max(0, this.cooldown[key] - dt);
+    if (this.attack) {
+      const a = this.attack;
+      a.t += dt;
+      if (a.type === 'tail') this.attackYaw = this._spinYaw(a, ATTACK.tail);
+      if (a.t >= a.dur) { this.attack = null; this.attackYaw = 0; }
+    }
+    this.invuln = Math.max(0, this.invuln - dt);
+    this.hurtFlash = Math.max(0, this.hurtFlash - dt * 3);
+    this._animate(dt);
+  }
+
   resetPose() {
     this.body.rotation.set(POSE.body, 0, 0);
     this.body.position.set(0, HIP_Y, 0);
@@ -399,6 +426,13 @@ export class Rex {
 
   damage(amount, fromDir) {
     if (!this.alive || this.invuln > 0) return false;
+    if (this.remote) {
+      // the owner applies it; we only record it so the host can forward it
+      this.takenDamage += amount;
+      this.invuln = 0.45;
+      this.hurtFlash = 1;
+      return true;
+    }
     this.hp = Math.max(0, this.hp - amount);
     this.invuln = 0.45;
     this.lastHit = 0;

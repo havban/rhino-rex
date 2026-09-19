@@ -42,6 +42,8 @@ export class Rhino {
     this.dying = 0;
     this.flash = 0;
     this.dead = false;        // fully removed
+    this.remote = false;      // replicated from the host, no local AI
+    this.net = { x: spawn.x, z: spawn.z, yaw: 0 };
     this._build();
   }
 
@@ -260,6 +262,23 @@ export class Rhino {
     this.state = s;
     this.stateT = 0;
     if (s === 'stun') this.stun = t || RHINO.crashStun;
+  }
+
+  /** Guests do not simulate rhinos; they just follow the host's snapshots. */
+  updateRemote(dt) {
+    if (this.dead) return;
+    this.phase += dt;
+    this.flash = Math.max(0, this.flash - dt * 4);
+    if (!this.alive) return this._updateDying(dt);
+    const before = tmp2.copy(this.pos);
+    const k = 1 - Math.exp(-12 * dt);
+    this.pos.x += (this.net.x - this.pos.x) * k;
+    this.pos.z += (this.net.z - this.pos.z) * k;
+    let d = this.net.yaw - this.yaw;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    this.yaw += d * k;
+    this._animate(dt, before);
   }
 
   update(dt, rex, world, others, fx) {

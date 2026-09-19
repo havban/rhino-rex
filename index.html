@@ -45,6 +45,7 @@
     <div class="kv"><span>GELOMBANG</span><b id="txt-wave">1</b></div>
     <div class="kv"><span>SKOR</span><b id="txt-score">0</b></div>
     <div class="kv small"><span id="txt-left">0 badak</span></div>
+    <div class="kv small"><span id="txt-players"></span></div>
   </div>
 
   <button id="btn-pause" aria-label="Jeda">II</button>
@@ -95,6 +96,7 @@
     <div class="row">
       <button id="btn-help" class="ghost">Kontrol</button>
       <button id="btn-sound" class="ghost">🔊 Suara: ON</button>
+      <button id="btn-coop" class="ghost">👥 Main Bersama</button>
       <button id="btn-scores" class="ghost">🏆 Papan Skor</button>
       <button id="btn-gore" class="ghost">🩸 Darah: ON</button>
       <button id="btn-fullscreen" class="ghost">⛶ Layar penuh</button>
@@ -138,6 +140,29 @@
     <p class="hint">Kamera kembali ke belakang T-Rex sendiri beberapa saat setelah kamu berhenti menggeser — paling cepat saat sedang berlari.</p>
     <p class="hint">Trik: pancing badak menabrak pohon atau batu saat menyeruduk — mereka akan pusing dan menerima kerusakan ekstra.</p>
     <button id="btn-help-close" class="primary">Tutup</button>
+  </div>
+</div>
+
+<!-- ======================= CO-OP LOBBY ======================= -->
+<div id="lobby" class="screen hidden">
+  <div class="card narrow">
+    <h2>👥 Main Bersama</h2>
+    <p id="lobby-offline" class="hint center hidden">
+      Mode bersama butuh server room. Isi <code>API</code> di <code>js/leaderboard.js</code>
+      dengan URL Cloudflare Worker-mu, lalu muat ulang.
+    </p>
+    <div id="lobby-forms">
+      <button id="btn-host" class="primary">Buat Room</button>
+      <p class="code-line hidden">Kode room: <b id="lobby-mycode">----</b></p>
+      <div class="entry-row">
+        <input id="lobby-code" type="text" maxlength="4" placeholder="KODE" autocomplete="off" />
+        <button id="btn-join" class="ghost">Gabung</button>
+      </div>
+      <p id="lobby-roster" class="hint center"></p>
+      <p id="lobby-status" class="status"></p>
+      <button id="btn-coop-start" class="primary hidden">MULAI BERSAMA</button>
+    </div>
+    <button id="btn-lobby-close" class="ghost">Tutup</button>
   </div>
 </div>
 
