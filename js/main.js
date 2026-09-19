@@ -1200,6 +1200,47 @@ class Game {
     this.banner('BANGKIT!', 'Kembali berburu');
   }
 
+  /**
+   * Arrows at the screen edge pointing at rhinos you cannot see. Only shown
+   * when the wave is nearly cleared: that is when hunting the last stragglers
+   * across a 150-unit arena stops being fun, and showing sixteen at once would
+   * just be noise.
+   */
+  _updateOffscreen() {
+    const host = $('offscreen');
+    const alive = this.livingRhinos();
+    const show = alive.length > 0 && alive.length <= 3 && this.state === 'playing';
+    if (!show) {
+      if (host.childElementCount) host.replaceChildren();
+      return;
+    }
+    while (host.childElementCount < alive.length) {
+      const el = document.createElement('div');
+      el.className = 'arrow';
+      host.appendChild(el);
+    }
+    while (host.childElementCount > alive.length) host.lastElementChild.remove();
+
+    const w = innerWidth, h = innerHeight, margin = 42;
+    const v = new THREE.Vector3();
+    alive.forEach((r, i) => {
+      const el = host.children[i];
+      v.set(r.pos.x, 2, r.pos.z).project(this.camera);
+      const behind = v.z > 1;
+      if (behind) { v.x = -v.x; v.y = -v.y; }
+      const onScreen = !behind && Math.abs(v.x) < 0.98 && Math.abs(v.y) < 0.98;
+      if (onScreen) { el.style.display = 'none'; return; }
+      el.style.display = '';
+      el.classList.toggle('boss', !!r.cfg.boss);
+      // push the direction out to the frame, then sit on it
+      const len = Math.max(Math.abs(v.x), Math.abs(v.y)) || 1;
+      const x = clamp((v.x / len * 0.5 + 0.5) * w, margin, w - margin);
+      const y = clamp((-v.y / len * 0.5 + 0.5) * h, margin, h - margin);
+      const angle = Math.atan2(y - h / 2, x - w / 2) * 180 / Math.PI + 90;
+      el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
+    });
+  }
+
   _flashVignette() {
     const v = $('vignette');
     v.classList.remove('flash');
@@ -1234,6 +1275,8 @@ class Game {
       bossBar.classList.add('hidden');
       this._bossGhost = undefined;
     }
+
+    this._updateOffscreen();
 
     const combo = $('combo');
     if (this.rex.combo >= 2) {

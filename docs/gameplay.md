@@ -100,6 +100,14 @@ Bars hold a roughly constant on-screen size with distance and fade out past
 95 units. A Matriarch also gets a full-width boss bar in the HUD, because hers
 is the health that decides the wave.
 
+**Finding them.** A rhino more than 34 units away is a grey speck on green
+grass, so it carries a floating pip above its bar that grows with distance and
+keeps working after the health bar has faded — gold normally, red for a
+Matriarch. And when a wave is down to its last three, any rhino that is off
+screen gets an arrow at the screen edge pointing at it. The cap is deliberate:
+sixteen arrows would be noise, but hunting the final straggler across a
+150-unit arena is the moment you actually need help.
+
 ## Destructible scenery
 
 Trees and boulders inside the arena have health and come back later, so the

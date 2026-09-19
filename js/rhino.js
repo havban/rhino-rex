@@ -32,7 +32,7 @@ void main() {
   vec2 p = vUv;
   // rounded-rect frame
   float edgeY = min(p.y, 1.0 - p.y);
-  float edgeX = min(p.x, 1.0 - p.x) * 3.2;         // the bar is wide, keep corners tight
+  float edgeX = min(p.x, 1.0 - p.x) * 2.1;         // the bar is wide, keep corners tight
   float edge = min(edgeX, edgeY);
   if (edge < 0.08) { gl_FragColor = vec4(0.10, 0.07, 0.05, 0.92 * alpha); return; }
 
@@ -64,6 +64,24 @@ function makeBarMaterial() {
 }
 
 // Green while healthy, amber when it matters, red when one more hit does it.
+// Shared between every rhino of a kind: one geometry, four materials, so the
+// far-away markers cost a draw call each and nothing more.
+const MARKER_GEO = new THREE.ConeGeometry(0.6, 1.3, 5);
+MARKER_GEO.rotateX(Math.PI);                    // point down at the animal
+const MARKER_MATS = {};
+function markerMaterial(boss) {
+  const key = boss ? 'boss' : 'normal';
+  if (!MARKER_MATS[key]) {
+    MARKER_MATS[key] = new THREE.MeshBasicMaterial({
+      color: boss ? 0xff5a2b : 0xffc23d,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    });
+  }
+  return MARKER_MATS[key];
+}
+
 const BAR_GREEN = new THREE.Color(0x5ada57);
 const BAR_AMBER = new THREE.Color(0xffc23d);
 const BAR_RED = new THREE.Color(0xf2452f);
@@ -278,13 +296,22 @@ export class Rhino {
     root.add(bar);
 
     this.barMat = makeBarMaterial();
-    const plate = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.46), this.barMat);
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.34), this.barMat);
     plate.renderOrder = 12;
     bar.add(plate);
 
     this.bar = bar;
     this.barFill = plate;          // kept for older callers
     this.barGhost = 1;
+
+    // Floats above the bar once a rhino is far enough away to be hard to spot.
+    const marker = new THREE.Mesh(MARKER_GEO, markerMaterial(!!v.boss));
+    marker.position.y = bar.position.y + 1.35 / v.scale;
+    marker.renderOrder = 12;
+    marker.visible = false;
+    root.add(marker);
+    this.marker = marker;
+    this.markerBase = (v.boss ? 1.5 : 1) / v.scale;
 
     this.frontAnchor = new THREE.Object3D();
     this.frontAnchor.position.set(0, -1.55, 2.1);
@@ -589,9 +616,18 @@ export class Rhino {
     this.bar.quaternion.copy(camQuat).premultiply(this._invRoot());
     if (!camPos) return;
     const d = Math.hypot(camPos.x - this.pos.x, camPos.z - this.pos.z);
-    const grow = THREE.MathUtils.clamp(d / 26, 0.85, 2.4);
+    const grow = THREE.MathUtils.clamp(d / 26, 0.85, 1.9);
     this.bar.scale.setScalar(this.barBase * grow);
     this.barMat.uniforms.alpha.value = d > 95 ? Math.max(0, 1 - (d - 95) / 25) : 1;
+
+    // Beyond ~34 units a rhino is a grey speck on green grass, so give it a
+    // pip. It keeps growing with distance where the health bar fades out.
+    const far = d > 34 && this.alive;
+    this.marker.visible = far;
+    if (!far) return;
+    this.marker.scale.setScalar(this.markerBase * THREE.MathUtils.clamp(d / 28, 1.2, 3.4));
+    this.marker.position.y = this.bar.position.y + (1.35 + Math.sin(this.phase * 3) * 0.22) / this.scaleF;
+    this.marker.material.opacity = Math.min(1, (d - 34) / 12);
   }
 
   _invRoot() {
@@ -600,8 +636,9 @@ export class Rhino {
 
   dispose() {
     this.dead = true;
+    if (this.marker) this.marker.visible = false;
     this.scene.remove(this.root);
-    this.root.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
+    this.root.traverse((o) => { if (o.isMesh && o !== this.marker) o.geometry.dispose(); });
     for (const k in this.mats) this.mats[k].dispose?.();
     this.barMat.dispose();
   }
