@@ -12,6 +12,7 @@ import { Music } from './music.js';
 import { Fireball } from './fireball.js';
 import * as Scores from './scores.js';
 import * as Stats from './analytics.js';
+import * as Update from './update.js';
 import * as Global from './leaderboard.js';
 import { Net } from './net.js';
 import { Session } from './multiplayer.js';
@@ -20,6 +21,17 @@ const $ = (id) => document.getElementById(id);
 const clamp = THREE.MathUtils.clamp;
 const IDLE_INPUT = { move: { x: 0, y: 0 }, sprint: false, consume: () => false };
 const ATTACK_KEYS = ['bite', 'tail', 'fireball'];
+
+/** Buckets a join error so the dashboard shows why people fail to connect. */
+function joinFailure(message = '') {
+  const m = message.toLowerCase();
+  if (m.includes('tidak ditemukan')) return 'kode-salah';
+  if (m.includes('ditutup')) return 'room-tutup';
+  if (m.includes('penuh')) return 'room-penuh';
+  if (m.includes('tidak merespons')) return 'tuan-rumah-diam';
+  if (m.includes('fetch') || m.includes('network') || m.includes('failed')) return 'jaringan';
+  return 'lain';
+}
 const INPUT_BUFFER = 0.28;      // seconds an unusable attack press is held for
 
 class Game {
@@ -96,8 +108,17 @@ class Game {
     Stats.install();     // GoatCounter counts the page view itself
     Stats.pageview();
     Stats.trackVisitor();
+    Stats.once(this.coarse ? 'device-touch' : 'device-desktop',
+      this.coarse ? 'Perangkat sentuh' : 'Perangkat desktop');
     if (/[?&]stats=1/.test(location.search)) Stats.mountPanel();
     window.__stats = () => Stats.mountPanel();
+
+    // tell the player when a newer build has gone out
+    Update.watch((build) => {
+      this._newBuild = build;
+      $('update-toast').classList.remove('hidden');
+      Stats.event('update-available', 'Versi baru terdeteksi');
+    });
 
     this.chase.orbit(0, this.rex, 0);
     this.renderer.compile(this.scene, this.camera);
@@ -110,7 +131,18 @@ class Game {
     $('btn-restart').addEventListener('click', () => this.start());
     $('btn-resume').addEventListener('click', () => this.pause(false));
     $('btn-quit').addEventListener('click', () => this.toMenu());
-    $('btn-help').addEventListener('click', () => $('help').classList.toggle('hidden'));
+    $('btn-reload').addEventListener('click', () => {
+      Stats.event('reload-manual', 'Muat ulang manual');
+      Update.reload(this._newBuild);
+    });
+    $('btn-update').addEventListener('click', () => {
+      Stats.event('update-reloaded', 'Muat ulang ke versi baru');
+      Update.reload(this._newBuild);
+    });
+    $('btn-help').addEventListener('click', () => {
+      Stats.once('open-help', 'Membuka bantuan kontrol');
+      $('help').classList.toggle('hidden');
+    });
     $('btn-pause').addEventListener('click', () => this.pause(true));
 
     const fs = $('btn-fullscreen');
@@ -134,14 +166,24 @@ class Game {
       paintSound();
     });
 
-    $('btn-coop').addEventListener('click', () => this.showLobby());
+    $('btn-coop').addEventListener('click', () => {
+      Stats.once('open-coop', 'Membuka lobi co-op');
+      this.showLobby();
+    });
     $('btn-lobby-close').addEventListener('click', () => { this.leaveCoop(); $('lobby').classList.add('hidden'); });
     $('btn-host').addEventListener('click', () => this.hostCoop());
     $('btn-join').addEventListener('click', () => this.joinCoop());
-    $('btn-coop-start').addEventListener('click', () => { $('lobby').classList.add('hidden'); this.start(); });
+    $('btn-coop-start').addEventListener('click', () => {
+      Stats.event(`coop-start-${Math.min(this.mp ? this.mp.playerCount : 1, 4)}p`, 'Memulai co-op');
+      $('lobby').classList.add('hidden');
+      this.start();
+    });
     $('lobby-code').addEventListener('keydown', (e) => { if (e.code === 'Enter') this.joinCoop(); });
 
-    $('btn-scores').addEventListener('click', () => this.showScores());
+    $('btn-scores').addEventListener('click', () => {
+      Stats.once('open-scores', 'Membuka papan skor');
+      this.showScores();
+    });
     $('btn-go-scores').addEventListener('click', () => this.showScores());
     $('btn-scores-close').addEventListener('click', () => $('scores').classList.add('hidden'));
     $('tab-global').addEventListener('click', () => this.showScores('global'));
@@ -164,6 +206,7 @@ class Game {
         this.musicStyle = el.value;
         localStorage.setItem('rr.music', this.musicStyle);
         for (const other of this._musicPickers) other.value = this.musicStyle;
+        Stats.once(`music-${this.musicStyle}`, `Musik dipilih: ${this.musicStyle}`);
         this._startMusic(this.state !== 'playing');   // preview loudly from a menu
       });
     }
@@ -218,12 +261,21 @@ class Game {
     this.net.onStatus = (text, kind) => { this._lobbyStatus(text, kind); this._lobbyRoster(); };
     this.mp = new Session(this, this.net);
     const join = this.net.onPeerJoin, leave = this.net.onPeerLeave;
-    this.net.onPeerJoin = (p) => { join(p); this._lobbyRoster(); };
+    this.net.onPeerJoin = (p) => {
+      join(p);
+      // only meaningful on the host: a guest has not built the host's avatar
+      // yet at this point, so its count would always read 1
+      if (this.mp.isHost) {
+        Stats.once(`coop-players-${Math.min(this.mp.playerCount, 4)}`, `Pemain tersambung: ${this.mp.playerCount}`);
+      }
+      this._lobbyRoster();
+    };
     this.net.onPeerLeave = (p) => { leave(p); this._lobbyRoster(); };
     return this.mp;
   }
 
   async hostCoop() {
+    Stats.event('coop-host-room', 'Membuat room');
     try {
       this._newSession();
       this.net.self.name = Scores.lastName() || 'Tuan rumah';
@@ -233,6 +285,7 @@ class Game {
       this._lobbyStatus(`Room ${code} siap. Bagikan kodenya, lalu tekan Mulai.`, 'good');
       this._lobbyRoster();
     } catch (err) {
+      Stats.event('coop-host-fail', 'Gagal membuat room');
       this._lobbyStatus(`Gagal membuat room: ${err.message}`, 'bad');
       this.leaveCoop();
     }
@@ -241,15 +294,19 @@ class Game {
   async joinCoop() {
     const code = $('lobby-code').value.trim().toUpperCase();
     if (code.length < 4) { this._lobbyStatus('Masukkan kode 4 huruf.', 'bad'); return; }
+    Stats.event('coop-join-try', 'Mencoba bergabung');
     try {
       this._newSession();
       this.net.self.name = Scores.lastName() || 'Tamu';
       this._lobbyStatus('Menyambung…');
       await this.net.join(code, this.net.self.name);
+      Stats.event('coop-join-ok', 'Berhasil bergabung');
       this._lobbyStatus('Tersambung! Menunggu tuan rumah memulai…', 'good');
       this._lobbyRoster();
       this._waitForHost();
     } catch (err) {
+      const why = joinFailure(err.message);
+      Stats.event(`coop-join-fail-${why}`, `Gagal bergabung: ${why}`);
       this._lobbyStatus(`Gagal bergabung: ${err.message}`, 'bad');
       this.leaveCoop();
     }
@@ -375,10 +432,12 @@ class Game {
     });
     btn.disabled = false;
     if (out.rank) {
+      Stats.event('score-submit-ok', 'Skor terkirim ke papan global');
       this._globalRank = out.rank;
       status.className = 'status good';
       status.textContent = `Masuk papan global di peringkat #${out.rank}!`;
     } else {
+      Stats.event('score-submit-fail', 'Gagal mengirim skor');
       status.className = 'status bad';
       status.textContent = `Papan global gagal: ${out.error}. Skor tetap tersimpan di perangkat ini.`;
     }
@@ -408,6 +467,7 @@ class Game {
     this._fast = (this._fast || 0) + (this._frameAvg < 1 / 57 ? dt : -dt);
     this._fast = clamp(this._fast, 0, 8);
     if (this._slow > 1.6 && this.prScale > 0.62) {
+      Stats.once('perf-downscale', 'Resolusi diturunkan otomatis');
       this.prScale = Math.max(0.62, this.prScale - 0.14);
       this.renderer.setPixelRatio(this.prCap * this.prScale);
       this._slow = 0; this._fast = 0;
@@ -451,6 +511,10 @@ class Game {
     this.run = { t0: performance.now(), bosses: 0, weapons: { bite: 0, tail: 0, fire: 0, fireball: 0 } };
     this._buffered = { bite: 0, tail: 0, fireball: 0 };
     Stats.event('run-start', 'Permainan dimulai');
+    Stats.event(this.mp ? 'mode-coop' : 'mode-solo', this.mp ? 'Main bersama' : 'Main sendiri');
+    Stats.once(`quality-${this.quality}`, `Grafis: ${this.quality}`);
+    Stats.once(innerWidth < innerHeight ? 'screen-portrait' : 'screen-landscape',
+      innerWidth < innerHeight ? 'Layar potret' : 'Layar lanskap');
     Global.beginRun();                 // fire and forget; failure just disables posting
     this.state = 'playing';
     document.body.classList.add('playing');

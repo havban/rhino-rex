@@ -407,3 +407,21 @@ body.is-touch #abilities, body.is-touch #reticle { display: none; }
   background: rgba(255,255,255,.85); border: 2px solid #ffd9a0; border-radius: 10px; color: var(--ink); }
 #statspanel p { margin: 8px 0 0; font-size: 10.5px; color: var(--ink-soft); }
 @media (max-width: 760px) { #statspanel { width: 210px; font-size: 11px; } }
+
+/* ---- new-build notice ---- */
+#update-toast {
+  position: fixed; z-index: 30; left: 50%; bottom: calc(18px + var(--safe-b));
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px; white-space: nowrap;
+  padding: 9px 10px 9px 16px; border-radius: 999px;
+  background: rgba(255, 252, 240, .95); border: 3px solid #fff; box-shadow: var(--shadow);
+  font-size: 13px; font-weight: 700; color: var(--ink);
+  animation: toast-in .35s cubic-bezier(.2, 1.6, .5, 1);
+}
+#update-toast button {
+  padding: 7px 14px; font-size: 13px; color: #fff; border-radius: 999px;
+  background: linear-gradient(180deg, var(--sun), var(--sun-deep));
+  box-shadow: 0 3px 0 #c9560d;
+}
+@keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(14px); } }
+@media (max-width: 480px) { #update-toast { font-size: 12px; padding-left: 12px; } }

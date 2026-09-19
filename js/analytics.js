@@ -99,6 +99,17 @@ export function event(name, title) {
   deliver(name, title || name, true);
 }
 
+// Events that describe a session rather than a moment - which device, which
+// menus were opened - must fire at most once per page load, or a curious
+// player clicking around would drown the dashboard.
+const fired = new Set();
+export function once(name, title) {
+  if (fired.has(name)) return false;
+  fired.add(name);
+  event(name, title);
+  return true;
+}
+
 const STATS_KEY = 'rr.stats';
 const VISIT_KEY = 'rr.visit';
 

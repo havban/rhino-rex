@@ -42,6 +42,28 @@ attribute — and the module reads it from the DOM.
 | `score-<under-500 … 50k+>` | score bracket at the end of a run |
 | `weapon-<bite\|tail\|fire\|fireball>` | most-used weapon that run |
 | `boss-killed` | a Matriarch died that run |
+| `mode-solo` / `mode-coop` | which kind of run just started |
+| `device-touch` / `device-desktop` | once per load, from `pointer: coarse` |
+| `screen-portrait` / `screen-landscape` | once, at the first run |
+| `quality-<low\|medium\|high>` | graphics preset actually in use, once |
+| `perf-downscale` | the adaptive resolution had to drop — this device is struggling |
+| `open-coop` / `open-scores` / `open-help` | menu opened, once each per load |
+| `music-<ceria\|stomp\|chip\|synth>` | a track was chosen, once per style |
+| `coop-host-room` / `coop-host-fail` | a room was created, or creation failed |
+| `coop-join-try` / `coop-join-ok` | join funnel |
+| `coop-join-fail-<kode-salah\|room-tutup\|room-penuh\|tuan-rumah-diam\|jaringan\|lain>` | why a join failed |
+| `coop-players-<2..4>` | how many connected, host side only |
+| `coop-start-<1..4>p` | the host started a session of that size |
+| `score-submit-ok` / `score-submit-fail` | global leaderboard outcome |
+| `update-available` / `update-reloaded` / `reload-manual` | new-build notice and reloads |
+
+The co-op funnel is the interesting one: `open-coop` → `coop-host-room` or
+`coop-join-try` → `coop-join-ok` shows exactly where people fall out, and the
+`coop-join-fail-*` split says whether it is mistyped codes or NAT trouble.
+
+Session-shaped events (device, screen, quality, menu opens) use
+`Stats.once()`, which de-duplicates per page load. Everything else fires at
+most once per run. Nothing fires per frame.
 
 Waves and scores are bucketed on purpose: the dashboard shows a distribution
 instead of thousands of unique numbers.

@@ -109,6 +109,21 @@ touch anywhere restores touch mode even when the pad is hidden.
 `input.scripted = true` makes `sample()` a no-op so tests can drive the fields
 directly.
 
+## Update notification
+
+There is no service worker. The deploy workflow stamps the commit into
+`<meta name="build">` and writes the same value to `version.json`.
+[`js/update.js`](../js/update.js) compares the two, polling every five minutes
+and whenever the tab regains focus, and shows a reload toast when they differ.
+
+Reloading navigates to `?v=<build>` rather than calling `location.reload()`,
+because GitHub Pages serves `max-age=600` and a plain reload can return the
+very JavaScript being replaced. A manual **🔄 Muat ulang halaman** button sits
+on the pause card for the same reason.
+
+Locally the meta still holds `__BUILD__`, which the module treats as "not a
+real build" and stays silent.
+
 ## Persistence
 
 Everything is `localStorage`, all keys prefixed `rr.`:

@@ -193,6 +193,15 @@ js/music.js         # musik latar prosedural (4 gaya, lapisan adaptif)
 
 Objek `window.__game` diekspos untuk debugging (`state`, `rex`, `rhinos`, `cfg`, ...).
 
+## Pembaruan
+
+Situsnya memberi tahu sendiri kalau ada versi baru: alur penerbitan menyisipkan id commit
+ke halaman dan ke `version.json`, lalu halaman yang sedang terbuka membandingkannya tiap
+lima menit (dan setiap tab kembali aktif). Kalau berbeda, muncul notifikasi kecil
+**✨ Versi baru tersedia — Muat ulang**. Tombol **🔄 Muat ulang halaman** juga ada di layar
+jeda. Keduanya memuat ulang lewat `?v=<build>` supaya tidak kena cache GitHub Pages yang
+sepuluh menit.
+
 ## Dokumentasi
 
 Dokumentasi teknis lengkap ada di [`docs/`](docs/) (bahasa Inggris, untuk yang mengerjakan

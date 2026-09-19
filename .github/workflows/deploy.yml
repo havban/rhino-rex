@@ -22,6 +22,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Stamp the commit into the page and publish it alongside, so a running
+      # tab can tell that a newer build exists and offer to reload.
+      - name: Stamp build id
+        run: |
+          BUILD="${GITHUB_SHA::7}"
+          sed -i "s/__BUILD__/${BUILD}/" index.html
+          printf '{"build":"%s","at":"%s"}\n' "$BUILD" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > version.json
+          echo "stamped ${BUILD}"
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
