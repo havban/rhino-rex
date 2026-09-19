@@ -422,13 +422,13 @@ class Game {
       this.rex.breathing = false;
       this.audio.flame(false);
       this.fx.stopFlame();
-      this.music?.setVolume(0.16);
+      this.music?.setVolume(0.28);
       $('pause').classList.remove('hidden');
       document.exitPointerLock?.();
     } else if (!on && this.state === 'paused') {
       this.state = 'playing';
       $('pause').classList.add('hidden');
-      this.music?.setVolume(0.5);
+      this.music?.setVolume(0.85);
       this._goFullscreen();
       this.input.requestLock();
     }

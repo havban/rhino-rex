@@ -18,6 +18,7 @@
  * can also be rendered into an OfflineAudioContext (used by the tests).
  */
 
+const MAKEUP = 0.9;          // post-limiter level, tuned by offline measurement
 const LOOKAHEAD = 0.25;      // seconds of notes scheduled in advance
 const TICK = 40;             // ms between scheduler wake-ups
 const midi = (m) => 440 * Math.pow(2, (m - 69) / 12);
@@ -27,8 +28,8 @@ const midi = (m) => 440 * Math.pow(2, (m - 69) / 12);
 export const STYLES = {
   ceria: { label: 'Padang Ceria', trim: 1.0 },
   stomp: { label: 'Jurassic Stomp', trim: 0.78 },
-  chip: { label: 'Chiptune Rampage', trim: 1.2 },
-  synth: { label: 'Synthwave Predator', trim: 1.35 },
+  chip: { label: 'Chiptune Rampage', trim: 0.95 },
+  synth: { label: 'Synthwave Predator', trim: 1.2 },
 };
 
 export class Music {
@@ -36,7 +37,30 @@ export class Music {
     this.ctx = ctx;
     this.out = ctx.createGain();
     this.out.gain.value = 0.0001;
-    this.out.connect(destination);
+
+    // Music has a ~20 dB crest factor (kick and pluck transients), so simply
+    // turning it up clips long before it sounds loud. Squash the peaks first,
+    // then make up the level.
+    this.comp = ctx.createDynamicsCompressor();
+    this.comp.threshold.value = -18;
+    this.comp.knee.value = 10;
+    this.comp.ratio.value = 8;
+    this.comp.attack.value = 0.002;
+    this.comp.release.value = 0.2;
+    this.makeup = ctx.createGain();
+    this.makeup.gain.value = MAKEUP;
+    // the compressor alone still lets sharp attacks through, so finish with a
+    // tanh soft clip: transparent below ~0.7, rounds off instead of clipping
+    this.clip = ctx.createWaveShaper();
+    const n = 1024;
+    const curve = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const x = (i / (n - 1)) * 2 - 1;
+      curve[i] = Math.tanh(x * 1.6) / Math.tanh(1.6);
+    }
+    this.clip.curve = curve;
+    this.clip.oversample = '2x';
+    this.out.connect(this.comp).connect(this.makeup).connect(this.clip).connect(destination);
 
     this.layers = {};
     for (const name of ['base', 'perc', 'lead', 'boss']) {
@@ -52,7 +76,7 @@ export class Music {
     this.step = 0;
     this.nextTime = 0;
     this.timer = null;
-    this.volume = 0.5;
+    this.volume = 0.85;
   }
 
   // ------------------------------------------------------------- voices ----
