@@ -117,7 +117,8 @@ body.locked #btn-pause { display: none; }
 @media (max-height: 460px) { #bossbar { top: calc(84px + var(--safe-t)); width: min(300px, 46vw); } }
 
 #combo {
-  position: absolute; top: calc(104px + var(--safe-t)); right: calc(22px + var(--safe-r));
+  /* clear of the score panel above it, which it used to sit on top of */
+  position: absolute; top: calc(132px + var(--safe-t)); right: calc(22px + var(--safe-r));
   font-size: 26px; font-weight: 900; color: #fff;
   text-shadow: 0 3px 0 var(--sun-deep), 0 0 18px rgba(255, 150, 40, .8);
   opacity: 0; transform: scale(.7) rotate(-6deg); transition: all .18s cubic-bezier(.2, 1.7, .5, 1);
@@ -375,7 +376,9 @@ body.playing #touch.on { display: block; }
   .stat .ico { font-size: 15px; }
   .stat .num { font-size: 13px; min-width: 26px; }
   .track { height: 12px; }
-  #combo { font-size: 19px; top: calc(86px + var(--safe-t)); }
+  /* on a narrow portrait screen the boss bar spans the middle, so the combo
+     has to clear it rather than sit beside it */
+  #combo { font-size: 19px; top: calc(176px + var(--safe-t)); }
   .card { padding: 18px 16px; border-radius: 22px; border-width: 3px; }
   .moves { grid-template-columns: 1fr; gap: 7px; }
   .moves b { font-size: 14px; }
@@ -399,7 +402,7 @@ body.playing #touch.on { display: block; }
   .panel-left { width: min(200px, 40vw); }
   .stat { margin: 2px 0; }
   .track { height: 10px; }
-  #combo { font-size: 17px; top: calc(70px + var(--safe-t)); }
+  #combo { font-size: 17px; top: calc(112px + var(--safe-t)); }
   #stick { width: 96px; height: 96px; left: calc(16px + var(--safe-l)); bottom: calc(14px + var(--safe-b)); }
   #knob { width: 42px; height: 42px; margin: -21px 0 0 -21px; }
   /* Four rows of pads is taller than a landscape phone can spare - with

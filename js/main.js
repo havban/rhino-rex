@@ -1234,12 +1234,15 @@ class Game {
       if (onScreen) { el.style.display = 'none'; return; }
       el.style.display = '';
       el.classList.toggle('boss', !!r.cfg.boss);
-      // push the direction out to the frame, then sit on it
-      const len = Math.max(Math.abs(v.x), Math.abs(v.y)) || 1;
-      const x = clamp((v.x / len * 0.5 + 0.5) * w, margin, w - margin);
-      const y = clamp((-v.y / len * 0.5 + 0.5) * h, margin, h - margin);
-      const angle = Math.atan2(y - h / 2, x - w / 2) * 180 / Math.PI + 90;
-      el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
+      // Ride an ellipse around the centre rather than the window frame. The
+      // frame puts arrows in the corners, which is exactly where the joystick,
+      // the attack pads and the HUD panels live.
+      const angle = Math.atan2(-v.y, v.x);
+      const x = w / 2 + Math.cos(angle) * w * 0.34;
+      const y = h / 2 + Math.sin(angle) * h * 0.34;
+      const deg = angle * 180 / Math.PI + 90;
+      el.style.transform = `translate(${x}px, ${y}px) rotate(${deg}deg)`;
+      void margin;
     });
   }
 
