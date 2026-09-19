@@ -98,6 +98,7 @@
       <div><b>☄️ Bola Api</b><span>Lemparan melengkung yang meledak — pakai meteran api</span></div>
       <div><b>🦏 Waspada Serudukan</b><span>Badak mengais tanah sebelum menerjang — menepilah!</span></div>
     </div>
+    <button id="btn-resume-run" class="primary hidden">▶ LANJUTKAN</button>
     <button id="btn-start" class="primary">MULAI BERBURU</button>
     <div class="row">
       <button id="btn-help" class="ghost">Kontrol</button>
@@ -204,6 +205,20 @@
     </div>
     <button id="btn-reload" class="ghost">🔄 Muat ulang halaman</button>
     <button id="btn-quit" class="ghost">Kembali ke menu</button>
+  </div>
+</div>
+
+<!-- ======================= DOWNED (one free revive) ======================= -->
+<div id="revive" class="screen hidden">
+  <div class="card narrow">
+    <h2>😵 Tumbang!</h2>
+    <p class="hint center">Masih ada satu kesempatan bangkit di perburuan ini.</p>
+    <div class="scores two">
+      <div><span>GELOMBANG</span><b id="rv-wave">1</b></div>
+      <div><span>SKOR</span><b id="rv-score">0</b></div>
+    </div>
+    <button id="btn-revive" class="primary">🔥 BANGKIT LAGI</button>
+    <button id="btn-giveup" class="ghost">Sudahi perburuan</button>
   </div>
 </div>
 

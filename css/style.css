@@ -170,6 +170,8 @@ body.locked #btn-pause { display: none; }
 }
 /* opened on top of the menu *and* of the game-over card, both z-index 20 */
 #scores, #lobby { z-index: 22; }
+#revive { z-index: 23; }
+#btn-resume-run { margin-bottom: 10px; background: linear-gradient(180deg, #7bd96b, #3aa84b); box-shadow: 0 6px 0 #2a7a37, 0 14px 26px rgba(40, 140, 60, .3); }
 
 .code-line { margin: 12px 0; font-size: 15px; color: var(--ink-soft); }
 .code-line b {
@@ -263,6 +265,7 @@ button:active { transform: translateY(2px) scale(.99); }
 .hint { font-size: 13px; color: var(--ink-soft); line-height: 1.45; text-align: left; }
 
 .scores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 6px 0 20px; }
+.scores.two { grid-template-columns: repeat(2, 1fr); }
 .scores div { background: rgba(255, 255, 255, .8); border: 2px solid #ffe6b8; border-radius: 14px; padding: 10px 6px; }
 .scores span { display: block; font-size: 10.5px; letter-spacing: .08em; color: var(--ink-soft); }
 .scores b { font-size: 22px; }

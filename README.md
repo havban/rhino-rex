@@ -28,6 +28,12 @@ Semburkan api, gigit, dan sabetkan ekor untuk bertahan gelombang demi gelombang.
 - **Model halus**: T-Rex bertulang (SkinnedMesh) dengan tengkorak dalam bergigi, tangan
   kecil bercakar, dan kaki digitigrade; badak bertubuh tong dengan dua tanduk.
 - Gelombang tanpa akhir, skor + combo, buah semangka penyembuh.
+- **Awal yang ramah**: gelombang 1 cuma tiga badak dan serangan mereka 60% dulu, naik
+  penuh di gelombang 6 — supaya sempat belajar membaca aba-aba serudukan.
+- **Satu kali bangkit gratis** tiap perburuan, plus spanduk *REKOR BARU!* saat melewati
+  gelombang terjauhmu.
+- **Perburuan tersimpan otomatis**: tutup tab, kena pembaruan, atau ganti perangkat
+  keras — menu menawarkan **▶ LANJUTKAN** dari gelombang terakhir beserta skornya.
 - **🏆 Papan skor** dengan dua tab: **Global** (semua pemain) dan **Perangkat ini**
   (`localStorage`). Papan global dilayani Cloudflare Worker + D1 di `worker/` — lihat
   [worker/README.md](worker/README.md). Selama `API` di `js/leaderboard.js` masih kosong,

@@ -1,6 +1,6 @@
 // Rhino Rex — game bootstrap, loop, waves and combat resolution.
 import * as THREE from 'three';
-import { REX, ATTACK, WAVES, WORLD, CAMERA, RHINO, FIREBALL, IMPACT, SCENERY } from './config.js';
+import { REX, ATTACK, WAVES, WORLD, CAMERA, RHINO, FIREBALL, IMPACT, SCENERY, PROGRESS } from './config.js';
 import { World } from './world.js';
 import { Rex } from './rex.js';
 import { Rhino, spawnRing } from './rhino.js';
@@ -97,8 +97,9 @@ class Game {
     addEventListener('orientationchange', () => setTimeout(() => this._resize(), 120));
     visualViewport?.addEventListener('resize', () => this._resize());
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden && this.state === 'playing') this.pause(true);
+      if (document.hidden) { this._saveRun(); if (this.state === 'playing') this.pause(true); }
     });
+    addEventListener('pagehide', () => this._saveRun());     // the reliable one on mobile
     this.input.onUnlock = () => {
       document.body.classList.remove('locked');
       if (this.state === 'playing') this.pause(true);
@@ -127,8 +128,14 @@ class Game {
 
   // ---------------------------------------------------------------- UI ----
   _bindUI() {
-    $('btn-start').addEventListener('click', () => this.start());
-    $('btn-restart').addEventListener('click', () => this.start());
+    $('btn-start').addEventListener('click', () => { this._clearRun(); this.start(); });
+    $('btn-resume-run').addEventListener('click', () => {
+      const saved = this._loadRun();
+      if (saved) this.start(saved);
+    });
+    $('btn-revive').addEventListener('click', () => this.takeRevive());
+    $('btn-giveup').addEventListener('click', () => { $('revive').classList.add('hidden'); this.gameOver(); });
+    $('btn-restart').addEventListener('click', () => { this._clearRun(); this.start(); });
     $('btn-resume').addEventListener('click', () => this.pause(false));
     $('btn-quit').addEventListener('click', () => this.toMenu());
     $('btn-reload').addEventListener('click', () => {
@@ -227,6 +234,7 @@ class Game {
     });
 
     this._paintBest();
+    this._paintResume();
 
     const rotate = $('rotate');
     rotate?.addEventListener('click', () => rotate.classList.add('dismissed'));
@@ -332,6 +340,55 @@ class Game {
     this.mp = null;
     this.net = null;
     $('lobby-mycode').parentElement.classList.add('hidden');
+  }
+
+  // ---------------------------------------------------- saved runs ----
+  // Only the shape of the run is stored, not the world: resuming drops you at
+  // the start of the wave you were on, with your score and kills intact. That
+  // survives an update reload or a closed tab without pretending to restore
+  // fifteen rhinos mid-charge.
+  _saveRun() {
+    if (this.state !== 'playing' || this.mp || this.wave < 1) return;
+    try {
+      localStorage.setItem(PROGRESS.key, JSON.stringify({
+        wave: this.wave,
+        score: this.score,
+        kills: this.kills,
+        hp: Math.round(this.rex.hp),
+        fire: Math.round(this.rex.fire),
+        revives: this._revives,
+        weapons: this.run ? this.run.weapons : null,
+        bosses: this.run ? this.run.bosses : 0,
+        seconds: this.run ? Math.round((performance.now() - this.run.t0) / 1000) : 0,
+        savedAt: Date.now(),
+      }));
+    } catch { /* private mode: not worth breaking the game over */ }
+  }
+
+  _loadRun() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(PROGRESS.key) || 'null');
+      if (!raw || !raw.wave || raw.wave < 2) return null;
+      if (Date.now() - (raw.savedAt || 0) > PROGRESS.maxAgeHours * 3600e3) return null;
+      return raw;
+    } catch {
+      return null;
+    }
+  }
+
+  _clearRun() {
+    try { localStorage.removeItem(PROGRESS.key); } catch { /* ignore */ }
+    $('btn-resume-run').classList.add('hidden');
+  }
+
+  _paintResume() {
+    const saved = this._loadRun();
+    const btn = $('btn-resume-run');
+    btn.classList.toggle('hidden', !saved);
+    if (saved) {
+      btn.textContent = `▶ LANJUTKAN — GELOMBANG ${saved.wave} · ${saved.score.toLocaleString('id-ID')}`;
+    }
+    return saved;
   }
 
   _paintBest() {
@@ -479,7 +536,7 @@ class Game {
   }
 
   // ------------------------------------------------------------- flow ----
-  start() {
+  start(saved = null) {
     this.audio.init();
     this.audio.resume();
     for (const r of this.rhinos) if (!r.dead) r.dispose();
@@ -490,8 +547,8 @@ class Game {
     this.balls.length = 0;
     this.rex.cooldown.fireball = 0;
 
-    this.rex.hp = REX.maxHp;
-    this.rex.fire = REX.maxFire;
+    this.rex.hp = saved ? Math.max(saved.hp, 45) : REX.maxHp;
+    this.rex.fire = saved ? saved.fire : REX.maxFire;
     this.rex.alive = true;
     this.rex.pos.set(0, 0, 14);
     this.rex.vel.set(0, 0, 0);
@@ -503,14 +560,20 @@ class Game {
     this.chase.yaw = Math.PI;
     this.chase.pitch = 0.12;
 
-    this.wave = 0;
-    this.score = 0;
-    this.kills = 0;
+    this.wave = saved ? saved.wave - 1 : 0;
+    this.score = saved ? saved.score : 0;
+    this.kills = saved ? saved.kills : 0;
+    this._revives = saved ? (saved.revives ?? PROGRESS.revivesPerRun) : PROGRESS.revivesPerRun;
+    this._saveTimer = PROGRESS.autosaveEvery;
     this._respawn = 0;
     this.restTimer = this.mp && !this.mp.isHost ? 9e9 : 2.2;
-    this.run = { t0: performance.now(), bosses: 0, weapons: { bite: 0, tail: 0, fire: 0, fireball: 0 } };
+    this.run = {
+      t0: performance.now(),
+      bosses: saved ? saved.bosses || 0 : 0,
+      weapons: (saved && saved.weapons) || { bite: 0, tail: 0, fire: 0, fireball: 0 },
+    };
     this._buffered = { bite: 0, tail: 0, fireball: 0 };
-    Stats.event('run-start', 'Permainan dimulai');
+    Stats.event(saved ? 'run-resume' : 'run-start', saved ? 'Melanjutkan permainan' : 'Permainan dimulai');
     Stats.event(this.mp ? 'mode-coop' : 'mode-solo', this.mp ? 'Main bersama' : 'Main sendiri');
     Stats.once(`quality-${this.quality}`, `Grafis: ${this.quality}`);
     Stats.once(innerWidth < innerHeight ? 'screen-portrait' : 'screen-landscape',
@@ -527,7 +590,7 @@ class Game {
     this._goFullscreen();
     this.input.requestLock();
     this._startMusic();
-    this.banner('SIAP!', 'Badak datang…');
+    this.banner(saved ? `GELOMBANG ${saved.wave}` : 'SIAP!', saved ? 'Perburuan dilanjutkan' : 'Badak datang…');
   }
 
   // Phones drop out of fullscreen whenever the app is backgrounded, so the
@@ -557,6 +620,7 @@ class Game {
   }
 
   toMenu() {
+    this._saveRun();
     this.state = 'menu';
     this.leaveCoop();
     this.music?.stop(0.8);
@@ -565,7 +629,9 @@ class Game {
     $('menu').classList.remove('hidden');
     $('pause').classList.add('hidden');
     $('gameover').classList.add('hidden');
+    $('revive').classList.add('hidden');
     $('hud').classList.add('hidden');
+    this._paintResume();
     $('best-menu').textContent = this.best.toLocaleString('id-ID');
   }
 
@@ -576,6 +642,7 @@ class Game {
       this.audio.flame(false);
       this.fx.stopFlame();
       this.music?.setVolume(0.28);
+      this._saveRun();
       $('pause').classList.remove('hidden');
       document.exitPointerLock?.();
     } else if (!on && this.state === 'paused') {
@@ -619,6 +686,8 @@ class Game {
       this.run = null;
     }
 
+    $('revive').classList.add('hidden');
+    this._clearRun();
     this._pendingScore = this.score > 0 && (Scores.qualifies(this.score) || Global.available());
     this._lastRank = 0;
     this._globalRank = 0;
@@ -656,11 +725,17 @@ class Game {
     this.wave++;
     const plan = WAVES.composition(this.wave);
     const pts = spawnRing(plan.length, this.rex.pos);
+    const dmg = WAVES.damageScale(this.wave);
     plan.forEach((key, i) => {
       const r = new Rhino(this.scene, key, pts[i]);
       r.yaw = Math.atan2(this.rex.pos.x - pts[i].x, this.rex.pos.z - pts[i].z);
+      r.dmgScale = dmg;
       this.rhinos.push(r);
     });
+    const best = Stats.stats().bestWave || 0;
+    if (this.wave > best && this.wave > 1) {
+      this.banner('REKOR BARU!', `Gelombang ${this.wave} — terjauh sejauh ini`);
+    }
     const boss = plan.includes('matriarch');
     this.banner(`GELOMBANG ${this.wave}`, boss ? '⚠️ MATRIARK BADAK MUNCUL!' : `${plan.length} badak menyerbu`);
     this.audio.wave();
@@ -872,7 +947,7 @@ class Game {
     this.fx.shake(r.cfg.boss ? 1.4 : 0.35);
     this.audio.snort();
     if (r.cfg.boss && this.run) this.run.bosses += 1;
-    if (r.cfg.boss || Math.random() < 0.22) this._dropPickup(r.pos.clone());
+    if (r.cfg.boss || Math.random() < WAVES.dropChance(this.wave)) this._dropPickup(r.pos.clone());
     if (this.rex.combo > 0 && this.rex.combo % 5 === 0) this.banner(`COMBO ×${this.rex.combo}`, 'Badak berjatuhan!');
   }
 
@@ -1007,13 +1082,23 @@ class Game {
       if (this.restTimer <= 0) this.nextWave();
     } else if (this.livingRhinos().length === 0 && this.rhinos.every((r) => !r.alive)) {
       this.restTimer = WAVES.restBetween;
-      this.rex.heal(18);
+      this.rex.heal(WAVES.restHeal);
+      this._saveRun();                       // a cleared wave is the safest point to keep
       this.banner(`GELOMBANG ${this.wave} AMAN!`, 'Pulih sebentar…');
       this.score += 120 * this.wave;
     }
 
     this.chase.update(dt, this.rex, this.world, this.fx.shakeAmount, this.zoom, input.move);
-    if (!this.rex.alive && !this.mp) this.gameOver();
+
+    this._saveTimer -= dt;
+    if (this._saveTimer <= 0) { this._saveTimer = PROGRESS.autosaveEvery; this._saveRun(); }
+
+    if (!this.rex.alive && !this.mp) {
+      // only worth interrupting for if there is a run to save; dying on wave 1
+      // just wants a fast restart
+      if (this._revives > 0 && this.wave >= 2) this._offerRevive();
+      else this.gameOver();
+    }
     this._updateHud();
   }
 
@@ -1047,6 +1132,42 @@ class Game {
         this.pickups.splice(i, 1);
       }
     }
+  }
+
+  _offerRevive() {
+    this.state = 'dead';
+    this.audio.flame(false);
+    this.fx.stopFlame();
+    this.music?.setVolume(0.2);
+    $('rv-wave').textContent = String(Math.max(1, this.wave));
+    $('rv-score').textContent = this.score.toLocaleString('id-ID');
+    $('revive').classList.remove('hidden');
+    document.exitPointerLock?.();
+    Stats.event('revive-offered', 'Ditawari bangkit lagi');
+  }
+
+  takeRevive() {
+    this._revives -= 1;
+    $('revive').classList.add('hidden');
+    this.state = 'playing';
+    this.music?.setVolume(0.85);
+    this._revive();
+    this.rex.hp = PROGRESS.reviveHp;
+    this.rex.invuln = PROGRESS.reviveGrace;
+    // shove the herd off before standing back up, or you die again instantly
+    for (const r of this.livingRhinos()) {
+      const away = r.pos.clone().sub(this.rex.pos).setY(0);
+      if (away.length() > PROGRESS.reviveClearRadius) continue;
+      away.normalize();
+      r.takeDamage(0, { knock: away, knockStrength: 30, stun: 1.4 });
+    }
+    this.fx.ring(this.rex.pos.clone().setY(0.8), 0xffd98a);
+    this.fx.shake(0.9);
+    this.audio.roar();
+    this.banner('BANGKIT LAGI!', 'Kesempatan terakhir');
+    this.input.requestLock();
+    this._saveRun();
+    Stats.event('revive-taken', 'Bangkit lagi dipakai');
   }
 
   _revive() {

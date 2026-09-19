@@ -43,6 +43,7 @@ export class Rhino {
     this.flash = 0;
     this.dead = false;        // fully removed
     this.remote = false;      // replicated from the host, no local AI
+    this.dmgScale = 1;        // early waves hit softer (see WAVES.damageScale)
     this.net = { x: spawn.x, z: spawn.z, yaw: 0 };
     this._build();
   }
@@ -342,7 +343,7 @@ export class Rhino {
         // hit the rex?
         if (!this.hitThisCharge && dist < this.radius + 2.6) {
           this.hitThisCharge = true;
-          const dealt = rex.damage(this.cfg.chargeDamage, dir);
+          const dealt = rex.damage(this.cfg.chargeDamage * this.dmgScale, dir);
           if (dealt) {
             fx?.impact(rex.pos.clone().setY(2.4), 0xff5a3c);
             fx?.shake(0.9);
@@ -364,7 +365,7 @@ export class Rhino {
         if (this.stateT > 0.35 && !this.hitThisCharge) {
           this.hitThisCharge = true;
           if (dist < 7.5 && this._facing(dir, 0.55)) {
-            if (rex.damage(this.cfg.damage, dir)) { fx?.impact(rex.pos.clone().setY(2.6), 0xffa03c); fx?.shake(0.45); }
+            if (rex.damage(this.cfg.damage * this.dmgScale, dir)) { fx?.impact(rex.pos.clone().setY(2.6), 0xffa03c); fx?.shake(0.45); }
           }
         }
         if (this.stateT > 0.8) { this.hitThisCharge = false; this.attackCd = RHINO.attackCooldown; this.setState('chase'); }

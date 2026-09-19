@@ -114,7 +114,7 @@ export const RHINO = {
     calf:    { hp: 55,  speed: 8.0, chargeSpeed: 34, damage: 10, chargeDamage: 16, scale: 0.72, color: 0xbfc9d6, score: 70 },
     bull:    { hp: 90,  speed: 6.2, chargeSpeed: 30, damage: 16, chargeDamage: 26, scale: 1.0,  color: 0x9aa4b2, score: 100 },
     armored: { hp: 190, speed: 4.9, chargeSpeed: 27, damage: 20, chargeDamage: 34, scale: 1.22, color: 0x7d8796, score: 190, armor: 0.35 },
-    matriarch:{hp: 520, speed: 5.6, chargeSpeed: 33, damage: 26, chargeDamage: 44, scale: 1.75, color: 0xb08d6a, score: 900, armor: 0.2, boss: true },
+    matriarch:{hp: 440, speed: 5.6, chargeSpeed: 33, damage: 26, chargeDamage: 44, scale: 1.75, color: 0xb08d6a, score: 900, armor: 0.2, boss: true },
   },
   senseRange: 120,
   chargeTrigger: 34,      // starts the paw-stomp wind-up inside this range
@@ -127,20 +127,50 @@ export const RHINO = {
 };
 
 export const WAVES = {
-  restBetween: 6.0,
+  restBetween: 6.5,
+  restHeal: 30,
+
+  // Gentle opening, steady climb. Wave 1 used to throw five bulls at a player
+  // who had never held the controls; it now starts at three and adds one a
+  // wave, reaching the old numbers around wave 8 and capping at 16.
+  count(wave) {
+    return Math.min(3 + Math.floor((wave - 1) * 1.1), 16);
+  },
+
+  // Rhinos hit softer for the first few waves, so learning the charge tell is
+  // survivable. Full damage from wave 6 on.
+  damageScale(wave) {
+    return Math.min(1, 0.6 + (wave - 1) * 0.08);
+  },
+
+  // Melons are common while you are still learning, then settle down.
+  dropChance(wave) {
+    return Math.max(0.18, 0.4 - wave * 0.02);
+  },
+
   composition(wave) {
-    // Returns a list of variant keys to spawn for this wave.
     const out = [];
-    const n = Math.min(4 + Math.floor(wave * 1.4), 16);
+    const n = this.count(wave);
     for (let i = 0; i < n; i++) {
       const r = Math.random();
-      if (wave >= 4 && r < 0.22 + wave * 0.02) out.push('armored');
+      if (wave >= 6 && r < 0.14 + wave * 0.015) out.push('armored');
       else if (r < 0.34 && wave >= 2) out.push('calf');
       else out.push('bull');
     }
     if (wave % 5 === 0) out.push('matriarch');
     return out;
   },
+};
+
+// Saved runs and the one free revive - the reasons to come back to a run.
+export const PROGRESS = {
+  key: 'rr.run',
+  maxAgeHours: 24,
+  autosaveEvery: 5,       // seconds between quiet autosaves
+  revivesPerRun: 1,
+  reviveHp: 60,
+  reviveGrace: 3.0,       // seconds of invulnerability after standing back up
+  reviveClearRadius: 22,  // rhinos this close get thrown clear
 };
 
 export const CAMERA = {

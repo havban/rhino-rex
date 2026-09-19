@@ -59,11 +59,26 @@ tree, boulder or the fence stuns the rhino for 2.2 s, costs it 12 % of its
 health, and damages the scenery.** Stunned and recovering rhinos take **1.65×
 damage**, which is the core risk/reward loop of the game.
 
-## Waves
+## Waves and the difficulty ramp
 
-Wave *N* spawns `min(4 + floor(N × 1.4), 16)` rhinos, plus a Matriarch every
-fifth wave. Armored rhinos start appearing at wave 4, calves at wave 2. Six
-seconds of rest between waves, during which you heal 18 and score `120 × N`.
+Wave *N* spawns `min(3 + floor((N − 1) × 1.1), 16)` rhinos, plus a Matriarch
+every fifth wave. Calves appear from wave 2, armored rhinos from wave 6.
+6.5 seconds of rest between waves, during which you heal 30 and score
+`120 × N`.
+
+The opening is deliberately soft — a first-time player used to meet five bulls
+before touching the controls:
+
+| Wave | Rhinos | Damage taken | Melon drop chance |
+| --- | --- | --- | --- |
+| 1 | 3 | 60 % | 38 % |
+| 3 | 5 | 76 % | 34 % |
+| 6 | 8 | 100 % | 28 % |
+| 10 | 12 | 100 % | 20 % |
+| 15+ | 16 | 100 % | 18 % |
+
+`WAVES.damageScale(wave)` is applied to every rhino at spawn, so learning the
+charge tell is survivable before the game starts hitting at full strength.
 
 ## Scoring
 
@@ -93,7 +108,20 @@ blocking movement immediately, then regrow with a springy animation after 26 s
 Burning down your cover is a real trade: no trees means no charge-crash stuns
 until they come back.
 
-## Death
+## Death, revives and resuming
 
-Solo, death ends the run. In co-op you are down for 6 seconds and respawn with
-60 HP; the run only ends when every player is down at once.
+Solo, the first death in a run offers **one free revive**: you stand back up
+with 60 HP, three seconds of invulnerability, and every rhino within 22 units
+thrown clear and stunned. The second death ends the run. In co-op there is no
+revive prompt — you are down for 6 seconds and respawn, and the run only ends
+when every player is down at once.
+
+A run is **autosaved** to `localStorage` every 5 seconds, whenever a wave is
+cleared, on pause, and when the tab is hidden or closed. If a saved run is less
+than 24 hours old and reached wave 2, the menu offers
+**▶ LANJUTKAN — GELOMBANG N · score**. Resuming restarts at the beginning of
+that wave with your score, kills, health and remaining revive intact; the world
+itself is not restored, which keeps the save honest and tiny. Starting a fresh
+run or reaching a real game over clears it.
+
+Beating your furthest wave raises a **REKOR BARU!** banner mid-run.
