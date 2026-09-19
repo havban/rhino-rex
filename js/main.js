@@ -86,6 +86,7 @@ class Game {
     };
     this.input.onLock = () => document.body.classList.add('locked');
 
+    Stats.install();     // GoatCounter counts the page view itself
     Stats.pageview();
     if (/[?&]stats=1/.test(location.search)) Stats.mountPanel();
     window.__stats = () => Stats.mountPanel();

@@ -68,31 +68,30 @@ total waktu main, badak dikalahkan, matriark, skor terbaik, rata-rata gelombang,
 proporsi pemakaian tiap senjata. Tersimpan di `localStorage` (`rr.stats`), ada tombol
 reset. Pemain biasa tidak akan pernah melihat panel ini.
 
-**2. Kiriman agregat ke layanan analitik (mati secara bawaan).**
-`js/analytics.js` tidak melakukan permintaan jaringan apa pun selama `ENDPOINT` kosong.
+**2. Kiriman agregat ke GoatCounter (aktif).**
+Cuplikan resmi GoatCounter ada di `index.html`:
 
-Rekomendasi: **[GoatCounter](https://www.goatcounter.com)** — gratis untuk pemakaian
-non-komersial (100rb tampilan/bulan), tanpa cookie, tanpa data pribadi, jadi tidak perlu
-banner persetujuan, dan mendukung *custom event* sehingga bisa melihat sebaran gelombang
-dan skor, bukan cuma jumlah pengunjung.
-
-```
-1. daftar di goatcounter.com, pilih kode misalnya "rhino-rex"
-2. di js/analytics.js isi:
-   export const ENDPOINT = 'https://rhino-rex.goatcounter.com/count';
-3. dasbor ada di https://rhino-rex.goatcounter.com
-   -> Settings -> centang "private" supaya hanya kamu yang bisa membacanya
+```html
+<script data-goatcounter="https://havban.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 ```
 
-Yang dikirim hanya pencacah: satu tampilan halaman per kunjungan, lalu per permainan
-selesai `run-start`, `wave-<rentang>`, `score-<rentang>`, `weapon-<terfavorit>`, dan
-`boss-killed`. Tanpa id, tanpa cookie, tanpa data pribadi, dan tidak mengirim apa pun
-kalau peramban mengaktifkan *Do Not Track*. Nilai skor sengaja dikelompokkan ke rentang
-supaya dasbornya berupa sebaran, bukan ribuan angka unik.
+Skrip itu menghitung tampilan halaman sendiri; `js/analytics.js` menambahkan *custom
+event* lewat `window.goatcounter.count()` — `run-start`, `wave-<rentang>`,
+`score-<rentang>`, `weapon-<terfavorit>`, dan `boss-killed` setiap permainan selesai.
+Skor dan gelombang dikelompokkan ke rentang supaya dasbornya berupa sebaran, bukan
+ribuan angka unik. Endpoint hanya ditulis di satu tempat (atribut `data-goatcounter`);
+modulnya membacanya dari situ, dan kalau `count.js` diblokir pemblokir iklan, modul
+beralih ke endpoint piksel setelah 6 detik.
 
-Alternatif gratis: **Cloudflare Web Analytics** (tanpa batas, tapi hanya kunjungan —
-tidak ada custom event) dan **Umami Cloud** (dasbor lebih kaya, 10rb event/bulan).
-Mau pakai layanan lain? Biarkan `ENDPOINT` kosong dan pasang
+Dasbor: <https://havban.goatcounter.com> — buka **Settings → private** supaya hanya kamu
+yang bisa membacanya. GoatCounter tidak memakai cookie, tidak menyimpan data pribadi,
+menghormati *Do Not Track*, dan tidak menghitung kunjungan dari `localhost` (jadi
+pengembangan lokal tidak mengotori angkanya).
+
+Mau mematikan? Hapus tag `<script>` itu dari `index.html` — panel statistik lokal tetap
+jalan. Mau pakai layanan lain (misalnya Cloudflare Web Analytics yang gratis tanpa batas
+tapi tanpa custom event, atau Umami Cloud)? Hapus tagnya dan pasang
 `window.__rrTrack = (path, title, isEvent) => { ... }` sebelum game dimuat.
 
 ## Teknis

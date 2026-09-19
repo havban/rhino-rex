@@ -4,53 +4,102 @@
  *  1. A local tally in localStorage. Always on, never leaves the device.
  *     Inspect it in-game with ?stats=1 (or call window.__stats() in the console).
  *
- *  2. Aggregate pings to a hosted analytics service. DISABLED until you put
- *     your own endpoint in ENDPOINT below — with it empty this file makes no
- *     network requests at all.
+ *  2. Aggregate counters sent to GoatCounter. The official snippet lives in
+ *     index.html:
  *
- * Recommended service: GoatCounter (free for non-commercial use, no cookies,
- * no personal data, supports custom events).
- *   1. sign up at https://www.goatcounter.com and pick a code, e.g. "rhino-rex"
- *   2. set ENDPOINT below to 'https://rhino-rex.goatcounter.com/count'
- *   3. your dashboard is at https://rhino-rex.goatcounter.com — set it to
- *      private in Settings so only you can read it
+ *       <script data-goatcounter="https://havban.goatcounter.com/count"
+ *               async src="//gc.zgo.at/count.js"></script>
  *
- * Only counters are sent: a path, a title and the screen size. No ids, no
- * cookies, no personal data, and nothing at all if the visitor sets Do Not
- * Track. To use a different provider instead, leave ENDPOINT empty and assign
- * your own function to window.__rrTrack = (path, title, isEvent) => {...}.
+ *     That script counts the page view by itself; this module adds the custom
+ *     events (waves reached, score bracket, favourite weapon, boss kills)
+ *     through window.goatcounter.count(). The endpoint is read from the tag,
+ *     so it is configured in exactly one place.
+ *
+ * Only counters are sent — no ids, no cookies, no personal data — and
+ * GoatCounter honours Do Not Track. Remove the tag from index.html to turn all
+ * of it off; the local panel keeps working. To use a different provider,
+ * remove the tag and set window.__rrTrack = (path, title, isEvent) => {...}.
+ *
+ * Dashboard: https://havban.goatcounter.com (Settings -> private, so only you
+ * can read it).
  */
 
-export const ENDPOINT = '';           // <-- paste your GoatCounter /count URL here
-
-const STATS_KEY = 'rr.stats';
 const SITE_TITLE = 'Rhino Rex';
+const SCRIPT_TIMEOUT = 6000;     // if count.js never arrives, fall back to a pixel
+
+let blocked = false;
+const queue = [];
 
 const doNotTrack = () =>
   navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl === true;
 
-function send(path, title, isEvent) {
+/** The /count URL, taken from the GoatCounter script tag in index.html. */
+function endpoint() {
+  const tag = document.querySelector('script[data-goatcounter]');
+  return tag ? tag.getAttribute('data-goatcounter') : '';
+}
+
+const scriptReady = () => typeof window.goatcounter?.count === 'function';
+
+// Last-ditch path: the script was blocked, so hit the endpoint directly.
+function pixel(path, title, isEvent) {
+  const url = endpoint();
+  if (!url || doNotTrack()) return;
   try {
-    if (window.__rrTrack) { window.__rrTrack(path, title, isEvent); return; }
-    if (!ENDPOINT || doNotTrack()) return;
-    const u = new URL(ENDPOINT);
+    const u = new URL(url);
     u.searchParams.set('p', path);
     u.searchParams.set('t', title || path);
     if (isEvent) u.searchParams.set('e', 'true');
     u.searchParams.set('r', document.referrer || '');
     u.searchParams.set('s', [screen.width, screen.height, devicePixelRatio || 1].join(','));
     u.searchParams.set('rnd', Math.random().toString(36).slice(2, 10));
-    new Image().src = u.toString();   // fire and forget, no third-party JS
+    new Image().src = u.toString();
   } catch { /* analytics must never break the game */ }
 }
 
+function deliver(path, title, isEvent) {
+  if (window.__rrTrack) { window.__rrTrack(path, title, isEvent); return; }
+  if (scriptReady()) { window.goatcounter.count({ path, title: title || path, event: isEvent }); return; }
+  if (blocked) { pixel(path, title, isEvent); return; }
+  queue.push([path, title, isEvent]);
+}
+
+function flush() {
+  while (queue.length) {
+    const [path, title, isEvent] = queue.shift();
+    if (window.__rrTrack) window.__rrTrack(path, title, isEvent);
+    else if (scriptReady()) window.goatcounter.count({ path, title: title || path, event: isEvent });
+    else pixel(path, title, isEvent);
+  }
+}
+
+/** Waits for count.js, then drains anything the game logged while it loaded. */
+export function install() {
+  if (scriptReady()) { flush(); return; }
+  const started = Date.now();
+  const tick = () => {
+    if (scriptReady()) { flush(); return; }
+    if (Date.now() - started > SCRIPT_TIMEOUT) {
+      blocked = true;                 // ad blocker, offline, or no tag at all
+      if (endpoint() && !window.__rrTrack) pixel(location.pathname || '/', SITE_TITLE, false);
+      flush();
+      return;
+    }
+    setTimeout(tick, 250);
+  };
+  tick();
+}
+
+/** The page view is counted by count.js itself; this is only for the fallback. */
 export function pageview() {
-  send(location.pathname || '/', SITE_TITLE, false);
+  if (window.__rrTrack) window.__rrTrack(location.pathname || '/', SITE_TITLE, false);
 }
 
 export function event(name, title) {
-  send(name, title || name, true);
+  deliver(name, title || name, true);
 }
+
+const STATS_KEY = 'rr.stats';
 
 // ---------------------------------------------------------------- buckets --
 // Sent as event names, so the dashboard shows a distribution instead of a
