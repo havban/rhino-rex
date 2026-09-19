@@ -10,10 +10,13 @@ import { ChaseCamera } from './camera.js';
 import { Audio } from './audio.js';
 import { Fireball } from './fireball.js';
 import * as Scores from './scores.js';
+import * as Stats from './analytics.js';
 
 const $ = (id) => document.getElementById(id);
 const clamp = THREE.MathUtils.clamp;
 const IDLE_INPUT = { move: { x: 0, y: 0 }, sprint: false, consume: () => false };
+const ATTACK_KEYS = ['bite', 'tail', 'fireball'];
+const INPUT_BUFFER = 0.28;      // seconds an unusable attack press is held for
 
 class Game {
   constructor() {
@@ -65,6 +68,8 @@ class Game {
     this.restTimer = 0;
     this.time = 0;
     this.wantFullscreen = false;
+    this.run = null;                 // per-run tally, folded into the stats on death
+    this._buffered = { bite: 0, tail: 0, fireball: 0 };
     this.clock = new THREE.Clock();
 
     this._bindUI();
@@ -80,6 +85,10 @@ class Game {
       if (this.state === 'playing') this.pause(true);
     };
     this.input.onLock = () => document.body.classList.add('locked');
+
+    Stats.pageview();
+    if (/[?&]stats=1/.test(location.search)) Stats.mountPanel();
+    window.__stats = () => Stats.mountPanel();
 
     this.chase.orbit(0, this.rex, 0);
     this.renderer.compile(this.scene, this.camera);
@@ -267,6 +276,9 @@ class Game {
     this.score = 0;
     this.kills = 0;
     this.restTimer = 2.2;
+    this.run = { t0: performance.now(), bosses: 0, weapons: { bite: 0, tail: 0, fire: 0, fireball: 0 } };
+    this._buffered = { bite: 0, tail: 0, fireball: 0 };
+    Stats.event('run-start', 'Permainan dimulai');
     this.state = 'playing';
     document.body.classList.add('playing');
     $('menu').classList.add('hidden');
@@ -326,6 +338,23 @@ class Game {
     $('go-wave').textContent = String(Math.max(1, this.wave));
     $('go-kills').textContent = String(this.kills);
     $('go-best').textContent = this.best.toLocaleString('id-ID');
+
+    if (this.run) {
+      const w = this.run.weapons;
+      const topWeapon = Object.keys(w).reduce((a, b) => (w[b] > w[a] ? b : a), 'bite');
+      Stats.recordRun({
+        score: this.score,
+        wave: Math.max(1, this.wave),
+        kills: this.kills,
+        bosses: this.run.bosses,
+        seconds: (performance.now() - this.run.t0) / 1000,
+        weapons: w,
+        topWeapon: w[topWeapon] > 0 ? topWeapon : null,
+      });
+      const panel = document.getElementById('statspanel');
+      if (panel && !panel.classList.contains('hidden')) Stats.renderPanel(panel);
+      this.run = null;
+    }
 
     this._pendingScore = Scores.qualifies(this.score);
     this._lastRank = 0;
@@ -387,6 +416,7 @@ class Game {
       if (type === 'tail') opts.stun = cfg.stun;
       const dealt = r.takeDamage(cfg.damage, opts);
       this._registerHit(r, dealt, type, to);
+      if (this.run) this.run.weapons[type] += 1;
       hits++;
     }
     if (type === 'tail') {
@@ -442,6 +472,7 @@ class Game {
     const vel = new THREE.Vector3(flat.x / t, clamp(vy, -14, 22), flat.z / t);
 
     this.balls.push(new Fireball(this.scene, origin, vel));
+    if (this.run) this.run.weapons.fireball += 1;
     this.fx.impact(origin, 0xffb23d, 18);
     this.fx.shake(0.3);
   }
@@ -514,6 +545,7 @@ class Game {
       if (d > 0.5 && fwd.dot(to) < cosHalf) continue;
       const dealt = r.takeDamage(cfg.dps * dt, { burn: { time: cfg.burnTime, dps: cfg.burnDps } });
       this._fireAccum = (this._fireAccum || 0) + dealt;
+      if (this.run) this.run.weapons.fire += dealt / 40;   // scaled so it compares with melee hits
       r._fireTally = (r._fireTally || 0) + dealt;
       if (Math.random() < dt * 3) this.fx.blood(r.pos.clone().setY(1.8 * r.scaleF), null, 2, 0.6);
       if (r._fireTally > 22) { this.fx.number(r.pos.clone().setY(4.4 * r.scaleF), Math.round(r._fireTally), 'burn'); r._fireTally = 0; }
@@ -543,6 +575,7 @@ class Game {
     this.fx.number(r.pos.clone().setY(5.2 * r.scaleF), `+${Math.round(r.cfg.score * mult)}`, 'score');
     this.fx.shake(r.cfg.boss ? 1.4 : 0.35);
     this.audio.snort();
+    if (r.cfg.boss && this.run) this.run.bosses += 1;
     if (r.cfg.boss || Math.random() < 0.22) this._dropPickup(r.pos.clone());
     if (this.rex.combo > 0 && this.rex.combo % 5 === 0) this.banner(`COMBO ×${this.rex.combo}`, 'Badak berjatuhan!');
   }
@@ -601,15 +634,23 @@ class Game {
     }
     if (!this.rex.breathing) this.fx.stopFlame();
 
-    // ---- melee input ----
-    if (input.consume('bite') && this.rex.startAttack('bite')) this.audio.bite();
-    if (input.consume('tail') && this.rex.startAttack('tail', this._aimYaw(ATTACK.tail.aimRange))) {
-      this.audio.tail();
-    }
-    if (input.consume('fireball') && this.rex.canFireball() && this.rex.startAttack('fireball')) {
-      this.rex.fire -= FIREBALL.cost;
-      this.rex.cooldown.fireball = FIREBALL.cooldown;
-      this.audio.roar();
+    // ---- attack input, with a short buffer ----
+    // Pressing an attack mid-animation used to be thrown away; hold it for a
+    // moment instead so the next swing comes out the instant it can.
+    for (const k of ATTACK_KEYS) if (input.consume(k)) this._buffered[k] = INPUT_BUFFER;
+    for (const k of ATTACK_KEYS) {
+      if (this._buffered[k] <= 0) continue;
+      this._buffered[k] -= dt;
+      if (k === 'bite') {
+        if (this.rex.startAttack('bite')) { this._buffered.bite = 0; this.audio.bite(); }
+      } else if (k === 'tail') {
+        if (this.rex.startAttack('tail', this._aimYaw(ATTACK.tail.aimRange))) { this._buffered.tail = 0; this.audio.tail(); }
+      } else if (this.rex.canFireball() && this.rex.startAttack('fireball')) {
+        this._buffered.fireball = 0;
+        this.rex.fire -= FIREBALL.cost;
+        this.rex.cooldown.fireball = FIREBALL.cooldown;
+        this.audio.roar();
+      }
     }
     this._spinDust(dt);
     this._updateBalls(dt);

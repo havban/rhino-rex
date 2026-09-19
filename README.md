@@ -57,6 +57,44 @@ tombol bulat di kanan untuk menyerang, lompat, dan lari, tombol **II** di atas u
 Layar masuk mode layar-penuh saat permainan dimulai, dan kembali penuh saat kamu menekan
 "Lanjut" setelah jeda. Di laptop ada tombol **⛶ Layar penuh** di menu. Mode lanskap paling lega, tapi potret tetap jalan.
 
+## Statistik & analitik
+
+Ada dua lapis, dan keduanya terpisah.
+
+**1. Statistik lokal (selalu aktif, tidak pernah keluar dari perangkat).**
+Buka `?stats=1` — misalnya <https://havban.github.io/rhino-rex/?stats=1> — atau ketik
+`__stats()` di konsol. Panel kecil di pojok kiri-bawah menampilkan jumlah permainan,
+total waktu main, badak dikalahkan, matriark, skor terbaik, rata-rata gelombang, dan
+proporsi pemakaian tiap senjata. Tersimpan di `localStorage` (`rr.stats`), ada tombol
+reset. Pemain biasa tidak akan pernah melihat panel ini.
+
+**2. Kiriman agregat ke layanan analitik (mati secara bawaan).**
+`js/analytics.js` tidak melakukan permintaan jaringan apa pun selama `ENDPOINT` kosong.
+
+Rekomendasi: **[GoatCounter](https://www.goatcounter.com)** — gratis untuk pemakaian
+non-komersial (100rb tampilan/bulan), tanpa cookie, tanpa data pribadi, jadi tidak perlu
+banner persetujuan, dan mendukung *custom event* sehingga bisa melihat sebaran gelombang
+dan skor, bukan cuma jumlah pengunjung.
+
+```
+1. daftar di goatcounter.com, pilih kode misalnya "rhino-rex"
+2. di js/analytics.js isi:
+   export const ENDPOINT = 'https://rhino-rex.goatcounter.com/count';
+3. dasbor ada di https://rhino-rex.goatcounter.com
+   -> Settings -> centang "private" supaya hanya kamu yang bisa membacanya
+```
+
+Yang dikirim hanya pencacah: satu tampilan halaman per kunjungan, lalu per permainan
+selesai `run-start`, `wave-<rentang>`, `score-<rentang>`, `weapon-<terfavorit>`, dan
+`boss-killed`. Tanpa id, tanpa cookie, tanpa data pribadi, dan tidak mengirim apa pun
+kalau peramban mengaktifkan *Do Not Track*. Nilai skor sengaja dikelompokkan ke rentang
+supaya dasbornya berupa sebaran, bukan ribuan angka unik.
+
+Alternatif gratis: **Cloudflare Web Analytics** (tanpa batas, tapi hanya kunjungan —
+tidak ada custom event) dan **Umami Cloud** (dasbor lebih kaya, 10rb event/bulan).
+Mau pakai layanan lain? Biarkan `ENDPOINT` kosong dan pasang
+`window.__rrTrack = (path, title, isEvent) => { ... }` sebelum game dimuat.
+
 ## Teknis
 
 - [Three.js](https://threejs.org) r160, di-*vendor* ke `vendor/three.module.js` (tanpa CDN, tanpa build step).
@@ -92,6 +130,7 @@ js/world.js         # arena, langit, pohon, batu, rumput
 js/geom.js          # pembangun permukaan halus (sapuan tabung, elipsoid, kapsul)
 js/fireball.js      # proyektil bola api (lintasan melengkung + ledakan)
 js/scores.js        # papan skor lokal (localStorage)
+js/analytics.js     # statistik lokal + kiriman agregat opsional (mati bawaan)
 js/fx.js            # partikel, angka kerusakan, guncangan kamera
 js/camera.js        # kamera orang ketiga
 js/input.js         # keyboard/mouse/sentuh

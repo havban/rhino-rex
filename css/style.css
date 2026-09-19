@@ -366,3 +366,20 @@ body.is-touch #abilities, body.is-touch #reticle { display: none; }
 @media (hover: none) {
   .primary:hover, .ghost:hover { filter: none; }
 }
+
+/* ---- local stats panel (opened with ?stats=1, owner-facing only) ---- */
+#statspanel {
+  position: fixed; z-index: 40; left: 12px; bottom: 12px; width: 268px; max-height: 86dvh; overflow: auto;
+  background: rgba(255, 252, 240, .95); border: 3px solid #fff; border-radius: 16px;
+  box-shadow: var(--shadow); padding: 12px 14px; color: var(--ink);
+  font: 12px/1.45 ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+#statspanel h4 { margin: 0 0 8px; font-size: 13px; letter-spacing: .04em; display: flex; justify-content: space-between; align-items: center; }
+#statspanel h4 button { background: none; border: none; font-size: 18px; line-height: 1; color: var(--ink-soft); padding: 0 2px; }
+#statspanel table { width: 100%; border-collapse: collapse; }
+#statspanel td { padding: 2px 0; border-bottom: 1px dotted #ecd9b4; }
+#statspanel td.num { text-align: right; font-weight: 700; }
+#statspanel #stats-reset { width: 100%; margin-top: 10px; padding: 7px; font-size: 11px; font-family: inherit;
+  background: rgba(255,255,255,.85); border: 2px solid #ffd9a0; border-radius: 10px; color: var(--ink); }
+#statspanel p { margin: 8px 0 0; font-size: 10.5px; color: var(--ink-soft); }
+@media (max-width: 760px) { #statspanel { width: 210px; font-size: 11px; } }
