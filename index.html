@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#8fd9ff" />
+<meta name="description" content="Rhino Rex — game 3D di browser: T-Rex melawan kawanan badak penyeruduk. Semburkan api, gigit, dan sabetkan ekor." />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<title>Rhino Rex — T-Rex vs Badak</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦖</text></svg>" />
+<link rel="stylesheet" href="css/style.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<!-- ======================= HUD ======================= -->
+<div id="hud" class="hidden">
+  <div id="vignette"></div>
+
+  <div class="panel panel-left">
+    <div class="stat">
+      <span class="ico">❤️</span>
+      <div class="track"><i id="bar-hp"></i></div>
+      <span id="txt-hp" class="num">100</span>
+    </div>
+    <div class="stat">
+      <span class="ico">🔥</span>
+      <div class="track fire"><i id="bar-fire"></i></div>
+    </div>
+  </div>
+
+  <div class="panel panel-right">
+    <div class="kv"><span>GELOMBANG</span><b id="txt-wave">1</b></div>
+    <div class="kv"><span>SKOR</span><b id="txt-score">0</b></div>
+    <div class="kv small"><span id="txt-left">0 badak</span></div>
+  </div>
+
+  <div id="combo"></div>
+
+  <div id="reticle"></div>
+
+  <div id="abilities">
+    <div class="ab" id="cd-bite"><span class="glyph">🦷</span><span class="key">LMB / J</span><span class="nm">Gigit</span></div>
+    <div class="ab" id="cd-fire"><span class="glyph">🔥</span><span class="key">RMB / F</span><span class="nm">Semburan Api</span></div>
+    <div class="ab" id="cd-tail"><span class="glyph">🌀</span><span class="key">MMB / K</span><span class="nm">Pukulan Ekor</span></div>
+  </div>
+
+  <div id="banner"><b id="banner-title"></b><span id="banner-sub"></span></div>
+  <div id="fx-layer"></div>
+</div>
+
+<!-- ======================= TOUCH ======================= -->
+<div id="touch">
+  <div id="stick"><i id="knob"></i></div>
+  <div class="tbtns">
+    <button class="tb fire" id="tb-fire" data-act="fire">🔥</button>
+    <button class="tb bite" id="tb-bite" data-act="bite">🦷</button>
+    <button class="tb tail" id="tb-tail" data-act="tail">🌀</button>
+    <button class="tb jump" data-act="jump">⤴</button>
+    <button class="tb sprint" data-act="sprint">»</button>
+  </div>
+</div>
+
+<!-- ======================= MENU ======================= -->
+<div id="menu" class="screen">
+  <div class="card">
+    <h1><span class="rex">RHINO</span> <span class="rx">REX</span></h1>
+    <p class="tag">Kamu adalah T-Rex. Kawanan badak datang menyeruduk. Bakar, gigit, sabet — bertahanlah selama mungkin.</p>
+    <div class="moves">
+      <div><b>🔥 Semburan Api</b><span>Kerusakan beruntun, membakar badak dari jauh</span></div>
+      <div><b>🦷 Gigitan</b><span>Cepat dan menyakitkan di jarak dekat</span></div>
+      <div><b>🌀 Pukulan Ekor</b><span>Sapuan melingkar: melempar &amp; membuat pusing</span></div>
+      <div><b>🦏 Waspada Serudukan</b><span>Badak mengais tanah sebelum menerjang — menepilah!</span></div>
+    </div>
+    <button id="btn-start" class="primary">MULAI BERBURU</button>
+    <div class="row">
+      <button id="btn-help" class="ghost">Kontrol</button>
+      <button id="btn-sound" class="ghost">🔊 Suara: ON</button>
+      <label class="ghost sel">Grafis
+        <select id="sel-quality">
+          <option value="low">Rendah</option>
+          <option value="medium">Sedang</option>
+          <option value="high">Tinggi</option>
+        </select>
+      </label>
+    </div>
+    <p class="best">Skor terbaik: <b id="best-menu">0</b></p>
+  </div>
+</div>
+
+<!-- ======================= HELP ======================= -->
+<div id="help" class="screen hidden">
+  <div class="card narrow">
+    <h2>Kontrol</h2>
+    <ul class="keys">
+      <li><b>W A S D</b><span>Bergerak (relatif kamera)</span></li>
+      <li><b>Mouse</b><span>Putar kamera orang-ketiga</span></li>
+      <li><b>Shift</b><span>Lari kencang</span></li>
+      <li><b>Spasi</b><span>Lompat</span></li>
+      <li><b>Klik kiri / J</b><span>Gigit</span></li>
+      <li><b>Klik kanan / F</b><span>Semburan api (tahan)</span></li>
+      <li><b>Klik tengah / K</b><span>Pukulan ekor</span></li>
+      <li><b>Esc</b><span>Jeda</span></li>
+    </ul>
+    <p class="hint">Di ponsel: joystick kiri untuk gerak, geser layar kanan untuk kamera, tombol bulat untuk menyerang.</p>
+    <p class="hint">Trik: pancing badak menabrak pohon atau batu saat menyeruduk — mereka akan pusing dan menerima kerusakan ekstra.</p>
+    <button id="btn-help-close" class="primary">Tutup</button>
+  </div>
+</div>
+
+<!-- ======================= PAUSE ======================= -->
+<div id="pause" class="screen hidden">
+  <div class="card narrow">
+    <h2>Jeda</h2>
+    <button id="btn-resume" class="primary">Lanjut</button>
+    <button id="btn-quit" class="ghost">Kembali ke menu</button>
+  </div>
+</div>
+
+<!-- ======================= GAME OVER ======================= -->
+<div id="gameover" class="screen hidden">
+  <div class="card">
+    <h2>🦖 T-Rex Tumbang</h2>
+    <div class="scores">
+      <div><span>SKOR</span><b id="go-score">0</b></div>
+      <div><span>GELOMBANG</span><b id="go-wave">0</b></div>
+      <div><span>BADAK KALAH</span><b id="go-kills">0</b></div>
+      <div><span>TERBAIK</span><b id="go-best">0</b></div>
+    </div>
+    <button id="btn-restart" class="primary">COBA LAGI</button>
+  </div>
+</div>
+
+<noscript><p style="padding:2rem;font:16px system-ui">Game ini butuh JavaScript &amp; WebGL.</p></noscript>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
