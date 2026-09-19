@@ -259,7 +259,7 @@ h2 { margin: 0 0 14px; font-size: clamp(24px, 5vw, 36px); color: var(--sun-deep)
    moves stay short enough that the buttons under them are still on screen. */
 .moves { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; margin-bottom: 16px; text-align: left; }
 .moves div {
-  display: grid; grid-template-columns: auto 1fr; column-gap: 9px; align-items: center;
+  display: grid; grid-template-columns: auto 1fr; column-gap: 9px; align-items: center; align-content: center;
   background: rgba(255, 255, 255, .75); border: 2px solid #ffe6b8; border-radius: 14px; padding: 7px 11px;
 }
 .moves i { grid-row: span 2; font-style: normal; font-size: 21px; line-height: 1; }
@@ -279,11 +279,19 @@ button:active { transform: translateY(2px) scale(.99); }
 }
 .primary:hover { filter: brightness(1.06); }
 .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+/* The menu's secondary buttons used to wrap into ragged lines of 4 then 3.
+   Two grids keep the columns lined up at every width. */
+#menu .row { display: grid; gap: 8px; }
+#menu .row.actions { grid-template-columns: repeat(4, 1fr); }
+#menu .row.settings { grid-template-columns: repeat(3, 1fr); margin-top: 8px; }
 .ghost {
   padding: 10px 16px; font-size: 14px; color: var(--ink);
   background: rgba(255, 255, 255, .8); border: 2px solid #ffe0b0;
 }
+#menu .row .ghost { padding: 10px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ghost.sel { display: inline-flex; gap: 8px; align-items: center; }
+#menu .row .ghost.sel { display: grid; grid-template-columns: auto 1fr; gap: 8px; text-align: left; }
+#menu .row .ghost.sel select { min-width: 0; width: 100%; }
 .ghost.danger { color: #a33; border-color: #ffcfcf; background: rgba(255, 245, 245, .9); }
 .ghost select { font-family: inherit; font-weight: 700; border: none; background: #fff6e3; border-radius: 8px; padding: 4px 6px; color: var(--ink); }
 .best { margin: 16px 0 0; color: var(--ink-soft); font-size: 14px; }
@@ -433,6 +441,8 @@ body.playing #touch.on { display: block; }
   .tag { font-size: 13px; margin: 0 auto 10px; }
   h1 { font-size: clamp(32px, 8.4vw, 56px); }
   .row { margin-top: 9px; }
+  #menu .row.actions { grid-template-columns: 1fr 1fr; }
+  #menu .row.settings { grid-template-columns: 1fr; }
   .best { margin-top: 9px; font-size: 13px; }
   .legal { margin-top: 7px; font-size: 10px; line-height: 1.45; }
   .keys li { padding: 5px 3px; font-size: 12.5px; }

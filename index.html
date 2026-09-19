@@ -112,12 +112,16 @@
     </div>
     <button id="btn-resume-run" class="primary hidden">▶ LANJUTKAN</button>
     <button id="btn-start" class="primary">MULAI BERBURU</button>
-    <div class="row">
+    <!-- Two tidy grids rather than one wrapping flex row: things you open on
+         top, things you set underneath, and no ragged last line. -->
+    <div class="row actions">
       <button id="btn-help" class="ghost">Kontrol</button>
-      <button id="btn-sound" class="ghost">🔊 Suara: ON</button>
-      <button id="btn-coop" class="ghost">👥 Main Bersama</button>
       <button id="btn-scores" class="ghost">🏆 Papan Skor</button>
+      <button id="btn-coop" class="ghost">👥 Main Bersama</button>
       <button id="btn-fullscreen" class="ghost">⛶ Layar penuh</button>
+    </div>
+    <div class="row settings">
+      <button id="btn-sound" class="ghost">🔊 Suara: ON</button>
       <label class="ghost sel">Musik
         <select id="sel-music">
           <option value="ceria">1 · Padang Ceria</option>
@@ -157,7 +161,7 @@
       <li><b>Klik kiri / J</b><span>Gigit</span></li>
       <li><b>Klik kanan / F</b><span>Semburan api (tahan)</span></li>
       <li><b>Klik tengah / K</b><span>Pukulan ekor</span></li>
-      <li><b>R</b><span>Bola api (meledak, butuh 40 meteran api, jeda 6 detik)</span></li>
+      <li><b>R</b><span>Bola api (meledak, butuh 40 meteran api, jeda 4 detik)</span></li>
       <li><b>Q</b><span>Pakai item yang sedang dibawa (dinamit / ranjau)</span></li>
       <li><b>Esc</b><span>Jeda (atau tombol <b>II</b> di atas layar)</span></li>
     </ul>

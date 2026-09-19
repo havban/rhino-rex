@@ -16,7 +16,7 @@ fire meter refills at 15/s continuously.
 | 🦷 Bite | LMB / `J` | 26 | 7.2, 54° cone | 0.62 s | Fastest; best single-target DPS |
 | 🔥 Fire breath | RMB / `F` | 42/s | 22, 34° cone | — | Drains 27/s; sets a 3.2 s burn at 11/s; ignites trees |
 | 🌀 Tail spin | MMB / `K` | 21 | 10.2, **360°** | 1.5 s | Turns onto the nearest target, spins a full turn, knocks back 26 and stuns 1.1 s |
-| ☄️ Fireball | `R` / `E` | 58 direct + 34 splash | ~14–58 lobbed | **6.0 s** | Costs 40 fire; 7-unit blast with falloff, burn and knockback |
+| ☄️ Fireball | `R` / `E` | 58 direct + 34 splash | ~14–58 lobbed | **4.0 s** | Costs 40 fire; 7-unit blast with falloff, burn and knockback |
 
 Two details that matter:
 

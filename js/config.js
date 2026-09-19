@@ -38,7 +38,7 @@ export const FIREBALL = {
   life: 3.2,
   radius: 0.75,
   cost: 40,               // drains the same meter as the breath
-  cooldown: 6.0,          // deliberately slow: the cannon should be a decision, not a rotation
+  cooldown: 4.0,          // slow enough to stay a decision, short enough not to feel dead
   burn: { time: 3.6, dps: 13 },
   knockback: 18,
 };
