@@ -114,7 +114,14 @@ body.locked #btn-pause { display: none; }
 }
 #boss-ghost { background: #ffdc8a; transition: transform .45s ease-out; }
 #boss-fill { background: linear-gradient(90deg, #ff7a5c, #e12c1c); z-index: 1; transition: transform .1s linear; }
-@media (max-height: 460px) { #bossbar { top: calc(84px + var(--safe-t)); width: min(300px, 46vw); } }
+/* On a landscape phone 84px is already a quarter of the way down the play
+   area, and a wide red bar there reads as covering the screen. Tuck it just
+   under the pause button instead, and slim it down. */
+@media (max-height: 460px) {
+  #bossbar { top: calc(46px + var(--safe-t)); width: min(260px, 38vw); }
+  #bossbar .nm { font-size: 10px; margin-bottom: 2px; }
+  #bossbar .track { height: 11px; border-width: 2px; }
+}
 
 #combo {
   /* clear of the score panel above it, which it used to sit on top of */
