@@ -168,6 +168,9 @@ body.locked #btn-pause { display: none; }
   backdrop-filter: blur(6px);
   z-index: 20;
 }
+/* opened on top of the menu *and* of the game-over card, both z-index 20 */
+#scores { z-index: 22; }
+
 .card {
   width: min(680px, 94vw);
   background: linear-gradient(180deg, #fffdf6, #fff2d9);
@@ -221,6 +224,16 @@ button:active { transform: translateY(2px) scale(.99); }
 .stable td.pos { width: 28px; color: var(--sun-deep); font-weight: 800; }
 .stable td.nm { max-width: 8em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stable .empty { color: var(--ink-soft); font-style: italic; padding: 14px 6px; text-align: center; }
+
+.tabs { display: flex; gap: 8px; justify-content: center; margin: 0 0 10px; }
+.tab {
+  padding: 7px 14px; font-size: 13px; border-radius: 999px; color: var(--ink-soft);
+  background: rgba(255, 255, 255, .7); border: 2px solid #ffe0b0;
+}
+.tab.on { color: #fff; background: linear-gradient(180deg, var(--sun), var(--sun-deep)); border-color: #fff; }
+.status { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-soft); min-height: 1.2em; }
+.status.bad { color: #b4482c; }
+.status.good { color: #2f8a3a; font-weight: 700; }
 
 .entry { background: rgba(255, 255, 255, .72); border: 2px solid #ffe0b0; border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; }
 .entry .rank { margin: 0 0 8px; font-size: 14px; color: var(--ink-soft); }

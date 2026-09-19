@@ -28,9 +28,11 @@ Semburkan api, gigit, dan sabetkan ekor untuk bertahan gelombang demi gelombang.
 - **Model halus**: T-Rex bertulang (SkinnedMesh) dengan tengkorak dalam bergigi, tangan
   kecil bercakar, dan kaki digitigrade; badak bertubuh tong dengan dua tanduk.
 - Gelombang tanpa akhir, skor + combo, buah semangka penyembuh.
-- **🏆 Papan skor** sepuluh besar dengan nama pemain. Disimpan di `localStorage`, jadi
-  **hanya per perangkat** — tidak ada server, tidak ada akun, tidak ada data yang dikirim
-  ke mana pun. (Papan skor global butuh backend; belum ada.)
+- **🏆 Papan skor** dengan dua tab: **Global** (semua pemain) dan **Perangkat ini**
+  (`localStorage`). Papan global dilayani Cloudflare Worker + D1 di `worker/` — lihat
+  [worker/README.md](worker/README.md). Selama `API` di `js/leaderboard.js` masih kosong,
+  permainan otomatis memakai papan lokal saja dan tidak menghubungi apa pun; kalau API-nya
+  mati atau lambat, permainan tetap jalan dan skor tetap tersimpan di perangkat.
 - **🩸 Tetesan darah** yang memercik dari badak dan meninggalkan noda di rumput, memudar
   perlahan. Bisa dimatikan lewat tombol *Darah: ON/OFF* di menu.
 - **Responsif**: satu build jalan di ponsel, tablet, dan laptop. Kontrol sentuh muncul
@@ -129,6 +131,8 @@ js/world.js         # arena, langit, pohon, batu, rumput
 js/geom.js          # pembangun permukaan halus (sapuan tabung, elipsoid, kapsul)
 js/fireball.js      # proyektil bola api (lintasan melengkung + ledakan)
 js/scores.js        # papan skor lokal (localStorage)
+js/leaderboard.js   # klien papan skor global (gagal-lunak)
+worker/             # Cloudflare Worker + skema D1 untuk papan global
 js/analytics.js     # statistik lokal + kiriman agregat opsional (mati bawaan)
 js/fx.js            # partikel, angka kerusakan, guncangan kamera
 js/camera.js        # kamera orang ketiga

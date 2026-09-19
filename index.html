@@ -136,8 +136,12 @@
 <div id="scores" class="screen hidden">
   <div class="card">
     <h2>🏆 Papan Skor</h2>
-    <p class="hint center">Sepuluh perburuan terbaik di perangkat ini.</p>
+    <div class="tabs">
+      <button id="tab-global" class="tab on">🌍 Global</button>
+      <button id="tab-local" class="tab">📱 Perangkat ini</button>
+    </div>
     <div id="score-table"></div>
+    <p id="score-note" class="hint center"></p>
     <button id="btn-scores-close" class="primary">Tutup</button>
     <button id="btn-scores-clear" class="ghost danger">Hapus papan skor</button>
   </div>
@@ -163,11 +167,12 @@
       <div><span>TERBAIK</span><b id="go-best">0</b></div>
     </div>
     <div id="go-entry" class="entry hidden">
-      <p class="rank">Skor tertinggi baru — peringkat <b id="go-rank">1</b>!</p>
+      <p class="rank">Skor tertinggi baru!</p>
       <div class="entry-row">
         <input id="go-name" type="text" maxlength="14" placeholder="Nama kamu" autocomplete="off" />
         <button id="btn-save-score" class="ghost">Simpan</button>
       </div>
+      <p id="go-status" class="status"></p>
     </div>
     <div id="go-table"></div>
     <button id="btn-restart" class="primary">COBA LAGI</button>

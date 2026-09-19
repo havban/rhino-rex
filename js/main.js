@@ -11,6 +11,7 @@ import { Audio } from './audio.js';
 import { Fireball } from './fireball.js';
 import * as Scores from './scores.js';
 import * as Stats from './analytics.js';
+import * as Global from './leaderboard.js';
 
 const $ = (id) => document.getElementById(id);
 const clamp = THREE.MathUtils.clamp;
@@ -139,9 +140,12 @@ class Game {
     $('btn-scores').addEventListener('click', () => this.showScores());
     $('btn-go-scores').addEventListener('click', () => this.showScores());
     $('btn-scores-close').addEventListener('click', () => $('scores').classList.add('hidden'));
+    $('tab-global').addEventListener('click', () => this.showScores('global'));
+    $('tab-local').addEventListener('click', () => this.showScores('local'));
     $('btn-scores-clear').addEventListener('click', () => {
       Scores.clear();
-      this.renderScores($('score-table'));
+      this._scoreTab = 'local';
+      this.showScores('local');
       this._paintBest();
     });
     $('btn-save-score').addEventListener('click', () => this.saveScore());
@@ -175,7 +179,15 @@ class Game {
   }
 
   renderScores(host, highlight = -1, limit = Scores.MAX_ENTRIES) {
-    const rows = Scores.list().slice(0, limit);
+    this._renderRows(host, Scores.list().slice(0, limit), highlight);
+  }
+
+  _esc(str) {
+    return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  /** Draws rows from either board; `rows` uses the same shape for both. */
+  _renderRows(host, rows, highlight = -1) {
     if (!rows.length) {
       host.innerHTML = '<p class="empty">Belum ada skor tersimpan. Berburulah!</p>';
       return;
@@ -184,7 +196,7 @@ class Game {
       <tr class="${i === highlight ? 'me' : ''}">
         <td class="pos">${i + 1}</td>
         <td class="nm">${this._esc(e.name)}</td>
-        <td class="num">${e.score.toLocaleString('id-ID')}</td>
+        <td class="num">${Number(e.score).toLocaleString('id-ID')}</td>
         <td class="num">${e.wave}</td>
         <td class="num">${e.kills}</td>
       </tr>`).join('');
@@ -193,24 +205,78 @@ class Game {
       <tbody>${body}</tbody></table>`;
   }
 
-  _esc(str) {
-    return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  async showScores(tab) {
+    const screen = $('scores');
+    const host = $('score-table');
+    const note = $('score-note');
+    screen.classList.remove('hidden');
+
+    if (!tab) tab = this._scoreTab || (Global.available() ? 'global' : 'local');
+    if (tab === 'global' && !Global.available()) tab = 'local';
+    this._scoreTab = tab;
+    $('tab-global').classList.toggle('on', tab === 'global');
+    $('tab-local').classList.toggle('on', tab === 'local');
+    $('btn-scores-clear').classList.toggle('hidden', tab !== 'local');
+
+    if (tab === 'local') {
+      this.renderScores(host, this._lastRank - 1);
+      note.textContent = Global.available()
+        ? 'Sepuluh perburuan terbaik di perangkat ini.'
+        : 'Sepuluh perburuan terbaik di perangkat ini. Papan global belum aktif.';
+      return;
+    }
+
+    host.innerHTML = '<p class="empty">Memuat papan global…</p>';
+    note.textContent = '';
+    const out = await Global.top(20);
+    if (this._scoreTab !== 'global') return;              // player switched away
+    if (!out.scores) {
+      host.innerHTML = '<p class="empty">Papan global tidak bisa dimuat.</p>';
+      note.textContent = `Gagal: ${out.error}. Coba papan perangkat ini.`;
+      return;
+    }
+    if (!out.scores.length) {
+      host.innerHTML = '<p class="empty">Papan global masih kosong — jadilah yang pertama!</p>';
+      note.textContent = '';
+      return;
+    }
+    this._renderRows(host, out.scores, this._globalRank - 1);
+    note.textContent = 'Dua puluh perburuan terbaik dari semua pemain.';
   }
 
-  showScores() {
-    this.renderScores($('score-table'), this._lastRank - 1);
-    $('scores').classList.remove('hidden');
-  }
-
-  saveScore() {
+  async saveScore() {
+    const btn = $('btn-save-score');
+    const status = $('go-status');
     const name = $('go-name').value.trim() || 'Pemburu';
     Scores.rememberName(name);
+
     this._lastRank = Scores.add({ name, score: this.score, wave: Math.max(1, this.wave), kills: this.kills });
     this._pendingScore = false;
     $('go-entry').classList.add('hidden');
     this.renderScores($('go-table'), this._lastRank - 1, 5);
     this._paintBest();
     this.audio.pickup();
+
+    if (!Global.available()) return;
+    status.className = 'status';
+    status.textContent = 'Mengirim ke papan global…';
+    btn.disabled = true;
+    const out = await Global.submit({
+      name,
+      score: this.score,
+      wave: Math.max(1, this.wave),
+      kills: this.kills,
+      seconds: Math.round(this._lastRunSeconds || 0),
+    });
+    btn.disabled = false;
+    if (out.rank) {
+      this._globalRank = out.rank;
+      status.className = 'status good';
+      status.textContent = `Masuk papan global di peringkat #${out.rank}!`;
+    } else {
+      status.className = 'status bad';
+      status.textContent = `Papan global gagal: ${out.error}. Skor tetap tersimpan di perangkat ini.`;
+    }
   }
 
   _resize() {
@@ -280,6 +346,7 @@ class Game {
     this.run = { t0: performance.now(), bosses: 0, weapons: { bite: 0, tail: 0, fire: 0, fireball: 0 } };
     this._buffered = { bite: 0, tail: 0, fireball: 0 };
     Stats.event('run-start', 'Permainan dimulai');
+    Global.beginRun();                 // fire and forget; failure just disables posting
     this.state = 'playing';
     document.body.classList.add('playing');
     $('menu').classList.add('hidden');
@@ -343,6 +410,7 @@ class Game {
     if (this.run) {
       const w = this.run.weapons;
       const topWeapon = Object.keys(w).reduce((a, b) => (w[b] > w[a] ? b : a), 'bite');
+      this._lastRunSeconds = (performance.now() - this.run.t0) / 1000;
       Stats.recordRun({
         score: this.score,
         wave: Math.max(1, this.wave),
@@ -357,14 +425,19 @@ class Game {
       this.run = null;
     }
 
-    this._pendingScore = Scores.qualifies(this.score);
+    this._pendingScore = this.score > 0 && (Scores.qualifies(this.score) || Global.available());
     this._lastRank = 0;
+    this._globalRank = 0;
+    $('go-status').textContent = '';
+    $('go-status').className = 'status';
     const entry = $('go-entry');
     if (this._pendingScore) {
       const provisional = [...Scores.list(), { score: this.score }]
         .sort((a, b) => b.score - a.score)
         .findIndex((e) => e.score === this.score) + 1;
-      $('go-rank').textContent = String(provisional);
+      entry.querySelector('.rank').innerHTML = Global.available()
+        ? 'Simpan skormu ke papan <b>global</b> dan ke perangkat ini'
+        : `Skor tertinggi baru — peringkat <b id="go-rank">${provisional}</b> di perangkat ini!`;
       $('go-name').value = Scores.lastName();
       entry.classList.remove('hidden');
     } else {
