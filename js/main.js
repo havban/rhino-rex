@@ -155,13 +155,18 @@ class Game {
     $('btn-save-score').addEventListener('click', () => this.saveScore());
     $('go-name').addEventListener('keydown', (e) => { if (e.code === 'Enter') this.saveScore(); });
 
-    const music = $('sel-music');
-    music.value = this.musicStyle;
-    music.addEventListener('change', () => {
-      this.musicStyle = music.value;
-      localStorage.setItem('rr.music', this.musicStyle);
-      this._startMusic(true);      // a change is a user gesture: preview it now
-    });
+    // the same picker sits in the menu and on the pause card, so you can A/B
+    // tracks mid-fight where the adaptive layers are actually audible
+    this._musicPickers = [$('sel-music'), $('sel-music-2')].filter(Boolean);
+    for (const el of this._musicPickers) {
+      el.value = this.musicStyle;
+      el.addEventListener('change', () => {
+        this.musicStyle = el.value;
+        localStorage.setItem('rr.music', this.musicStyle);
+        for (const other of this._musicPickers) other.value = this.musicStyle;
+        this._startMusic(this.state !== 'playing');   // preview loudly from a menu
+      });
+    }
 
     const q = $('sel-quality');
     q.value = this.quality;
