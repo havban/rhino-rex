@@ -528,6 +528,8 @@ class Game {
     this.renderer.setSize(w, h, false);
     // short landscape screens (phones on their side) want a little more room too
     this.zoom = aspect < 1.0 ? 1.18 : h < 460 ? 1.1 : 1;
+    // screen pixels per world unit of height, at one unit of distance
+    this._pxFactor = h / (2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2));
     document.body.classList.toggle('is-short', h < 460);
     document.body.classList.toggle('is-portrait', aspect < 1);
   }
@@ -815,7 +817,7 @@ class Game {
    * point on the ground ahead, pushed further out as you aim higher.
    */
   _ballTarget(fwd) {
-    let best = null, bd = 60 * 60;
+    let best = null, bd = FIREBALL.range * FIREBALL.range;
     for (const r of this.livingRhinos()) {
       const to = r.pos.clone().sub(this.rex.pos).setY(0);
       const d2 = to.lengthSq();
@@ -1015,7 +1017,7 @@ class Game {
       if (this.state === 'menu') this.chase.orbit(dt, this.rex, this.time);
       else this.chase.update(dt, this.rex, this.world, this.fx.shakeAmount, this.zoom, null);
       if (this.state !== 'paused') this.rex.update(dt, IDLE_INPUT, this.chase.yaw, this.world);
-      for (const r of this.rhinos) if (!r.dead) r.faceBar(this.camera.quaternion, this.camera.position, this.rex.pos);
+      for (const r of this.rhinos) if (!r.dead) r.faceBar(this.camera.quaternion, this.camera.position, this.rex.pos, this._pxFactor);
       return;
     }
 
@@ -1064,7 +1066,7 @@ class Game {
     } else {
       for (const r of this.rhinos) r.update(dt, this.rex, this.world, this.rhinos, this.fx);
     }
-    for (const r of this.rhinos) { if (!r.alive && !r._counted && !r.dead) this._onKill(r, 'dot'); if (!r.dead) r.faceBar(this.camera.quaternion, this.camera.position, this.rex.pos); }
+    for (const r of this.rhinos) { if (!r.alive && !r._counted && !r.dead) this._onKill(r, 'dot'); if (!r.dead) r.faceBar(this.camera.quaternion, this.camera.position, this.rex.pos, this._pxFactor); }
     for (let i = this.rhinos.length - 1; i >= 0; i--) if (this.rhinos[i].dead) this.rhinos.splice(i, 1);
     if (this.rex.hp < hpBefore) { this.audio.hurt(); this._flashVignette(); }
 

@@ -1,6 +1,6 @@
 // Enemy rhinos: procedural model, charge-based AI, health bars.
 import * as THREE from 'three';
-import { RHINO, WORLD, SCENERY, ATTACK } from './config.js';
+import { RHINO, WORLD, SCENERY, FIREBALL } from './config.js';
 import { makeProfile, tubeAlongZ, ellipsoid, capsule, cone, skinMaterial } from './geom.js';
 
 const BODY_Y = 1.95;        // height of the torso pivot above the ground
@@ -64,10 +64,18 @@ function makeBarMaterial() {
 }
 
 // Green while healthy, amber when it matters, red when one more hit does it.
-// A rhino closer than this is within reach of the breath, so the marker has
-// done its job and gets out of the way.
-const MARKER_NEAR = ATTACK.fire.range + 4;
-const MARKER_FADE = 8;                          // units over which it fades in
+/**
+ * The marker exists for rhinos you cannot pick out, and "cannot pick out" is
+ * about how big something is on screen, not how far away it is. Driving it
+ * from apparent height means a calf earns a pip sooner than a matriarch, and
+ * the behaviour holds across viewport sizes, field of view and the wider
+ * portrait framing.
+ */
+const MARKER_PX = 22;        // taller than this on screen: you can see it, no pip
+const MARKER_PX_FULL = 15;   // by this size the pip is fully opaque
+// Never mark something already inside cannon reach: if you can hit it, you
+// have found it.
+const MARKER_MIN_DIST = FIREBALL.range;
 
 // Geometry is shared; materials are cloned per rhino because each one fades
 // on its own distance.
@@ -623,12 +631,12 @@ export class Rhino {
   /**
    * Billboard the bar and size both overlays.
    *
-   * Two different distances matter here. Apparent size follows the *camera*,
-   * but whether the marker is still useful follows the *player*: the camera
-   * trails ~23 units behind the rex, so measuring from it kept pips on rhinos
-   * that were already well inside breath range.
+   * Apparent size follows the *camera*; whether a rhino is already close
+   * enough to attack follows the *player*, because the camera trails ~23
+   * units behind the rex. `pxFactor` converts world height at one unit of
+   * distance into screen pixels, so the marker rule can be stated in pixels.
    */
-  faceBar(camQuat, camPos, playerPos) {
+  faceBar(camQuat, camPos, playerPos, pxFactor) {
     if (!this.bar.visible) return;
     this.bar.quaternion.copy(camQuat).premultiply(this._invRoot());
     if (!camPos) return;
@@ -638,12 +646,14 @@ export class Rhino {
     this.barMat.uniforms.alpha.value = camD > 95 ? Math.max(0, 1 - (camD - 95) / 25) : 1;
 
     const d = playerPos ? Math.hypot(playerPos.x - this.pos.x, playerPos.z - this.pos.z) : camD;
-    const far = d > MARKER_NEAR && this.alive;
+    // how tall this rhino stands on screen, in pixels
+    const px = pxFactor ? (3.0 * this.scaleF * pxFactor) / Math.max(camD, 1) : 0;
+    const far = this.alive && d > MARKER_MIN_DIST && px < MARKER_PX;
     this.marker.visible = far;
     if (!far) return;
     this.marker.scale.setScalar(this.markerBase * THREE.MathUtils.clamp(camD / 28, 1.2, 3.4));
     this.marker.position.y = this.bar.position.y + (1.35 + Math.sin(this.phase * 3) * 0.22) / this.scaleF;
-    const a = Math.min(1, (d - MARKER_NEAR) / MARKER_FADE);
+    const a = THREE.MathUtils.clamp((MARKER_PX - px) / (MARKER_PX - MARKER_PX_FULL), 0, 1);
     for (const m of this.markerMats) m.opacity = a;
   }
 

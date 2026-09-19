@@ -67,6 +67,7 @@ export const ATTACK = {
 };
 
 export const FIREBALL = {
+  range: 60,              // how far the cannon will lob and auto-aim
   damage: 58,             // direct hit
   splashDamage: 34,       // at the centre of the blast, falls off to zero at `splash`
   splash: 7.0,
