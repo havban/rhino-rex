@@ -113,7 +113,17 @@ Skrip itu menghitung tampilan halaman sendiri; `js/analytics.js` menambahkan *cu
 event* lewat `window.goatcounter.count()` — `run-start`, `wave-<rentang>`,
 `score-<rentang>`, `weapon-<terfavorit>`, dan `boss-killed` setiap permainan selesai.
 Skor dan gelombang dikelompokkan ke rentang supaya dasbornya berupa sebaran, bukan
-ribuan angka unik. Endpoint hanya ditulis di satu tempat (atribut `data-goatcounter`);
+ribuan angka unik.
+
+**Pengunjung unik.** GoatCounter sudah memisahkan *Visits* dari *Pageviews* di dasbornya —
+itu hitungan kunjungan uniknya, dibuat di sisi server dari hash harian IP + user agent, dan
+tidak perlu diapa-apakan. Yang tidak bisa diketahui GoatCounter adalah apakah suatu peramban
+pernah ke sini sebelumnya, jadi itu ditambahkan sendiri: pada muat pertama dikirim
+`visitor-new`, pada hari berikutnya `visitor-returning` plus `hari-aktif-<rentang>`
+(1, 2-5, 6-19, 20+). Paling banyak sepasang kejadian per perangkat per hari, jadi angkanya
+terbaca sebagai "perangkat unik hari ini". Tidak ada pengenal yang disimpan — hanya tanggal
+pertama, tanggal terakhir, dan jumlah hari aktif di `localStorage`, yang juga tampil di
+panel `?stats=1`. Endpoint hanya ditulis di satu tempat (atribut `data-goatcounter`);
 modulnya membacanya dari situ, dan kalau `count.js` diblokir pemblokir iklan, modul
 beralih ke endpoint piksel setelah 6 detik.
 
