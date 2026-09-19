@@ -100,10 +100,14 @@ Bars hold a roughly constant on-screen size with distance and fade out past
 95 units. A Matriarch also gets a full-width boss bar in the HUD, because hers
 is the health that decides the wave.
 
-**Finding them.** A rhino more than 34 units away is a grey speck on green
-grass, so it carries a floating pip above its bar that grows with distance and
-keeps working after the health bar has faded — gold normally, red for a
-Matriarch. And when a wave is down to its last three, any rhino that is off
+**Finding them.** A rhino beyond breath range — more than 26 units from the
+**player**, not the camera — carries a floating pip above its bar. It fades in
+over the next 8 units, grows with distance, and keeps working after the health
+bar has faded. Gold normally, red for a Matriarch, both behind a dark inverted
+hull so they stay legible against pale sky and bright grass alike.
+
+The threshold deliberately tracks `ATTACK.fire.range`: once a rhino is close
+enough to torch, the pip has done its job and gets out of the way. And when a wave is down to its last three, any rhino that is off
 screen gets an arrow at the screen edge pointing at it. The cap is deliberate:
 sixteen arrows would be noise, but hunting the final straggler across a
 150-unit arena is the moment you actually need help.

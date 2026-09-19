@@ -91,6 +91,18 @@ navigation deletes the save before the reload that was meant to read it.
 It is offered once per run and only from wave 2. `__game._revives` holds what
 is left.
 
+**An overlay marker behaves oddly for one enemy but not another.**
+Check whether the material is shared. `MARKER_GEO` is shared on purpose, but
+materials are cloned per rhino precisely because each fades on its own
+distance — mutating a shared material makes every marker follow whichever
+entity updated last.
+
+**Touch pads overlap the HUD panels on a phone.**
+Landscape phones lose 60–90 px to the browser bars, which is enough to push a
+four-row pad stack into the score panel. Short screens use a three-wide, two-
+deep grid for that reason. Re-measure with the overlap harness rather than
+eyeballing one device.
+
 ## Backend
 
 **Every request returns 403 `origin ditolak`.**

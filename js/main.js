@@ -1015,7 +1015,7 @@ class Game {
       if (this.state === 'menu') this.chase.orbit(dt, this.rex, this.time);
       else this.chase.update(dt, this.rex, this.world, this.fx.shakeAmount, this.zoom, null);
       if (this.state !== 'paused') this.rex.update(dt, IDLE_INPUT, this.chase.yaw, this.world);
-      for (const r of this.rhinos) if (!r.dead) r.faceBar(this.camera.quaternion, this.camera.position);
+      for (const r of this.rhinos) if (!r.dead) r.faceBar(this.camera.quaternion, this.camera.position, this.rex.pos);
       return;
     }
 
@@ -1064,7 +1064,7 @@ class Game {
     } else {
       for (const r of this.rhinos) r.update(dt, this.rex, this.world, this.rhinos, this.fx);
     }
-    for (const r of this.rhinos) { if (!r.alive && !r._counted && !r.dead) this._onKill(r, 'dot'); if (!r.dead) r.faceBar(this.camera.quaternion, this.camera.position); }
+    for (const r of this.rhinos) { if (!r.alive && !r._counted && !r.dead) this._onKill(r, 'dot'); if (!r.dead) r.faceBar(this.camera.quaternion, this.camera.position, this.rex.pos); }
     for (let i = this.rhinos.length - 1; i >= 0; i--) if (this.rhinos[i].dead) this.rhinos.splice(i, 1);
     if (this.rex.hp < hpBefore) { this.audio.hurt(); this._flashVignette(); }
 

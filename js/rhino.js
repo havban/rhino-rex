@@ -1,6 +1,6 @@
 // Enemy rhinos: procedural model, charge-based AI, health bars.
 import * as THREE from 'three';
-import { RHINO, WORLD, SCENERY } from './config.js';
+import { RHINO, WORLD, SCENERY, ATTACK } from './config.js';
 import { makeProfile, tubeAlongZ, ellipsoid, capsule, cone, skinMaterial } from './geom.js';
 
 const BODY_Y = 1.95;        // height of the torso pivot above the ground
@@ -64,22 +64,29 @@ function makeBarMaterial() {
 }
 
 // Green while healthy, amber when it matters, red when one more hit does it.
-// Shared between every rhino of a kind: one geometry, four materials, so the
-// far-away markers cost a draw call each and nothing more.
-const MARKER_GEO = new THREE.ConeGeometry(0.6, 1.3, 5);
+// A rhino closer than this is within reach of the breath, so the marker has
+// done its job and gets out of the way.
+const MARKER_NEAR = ATTACK.fire.range + 4;
+const MARKER_FADE = 8;                          // units over which it fades in
+
+// Geometry is shared; materials are cloned per rhino because each one fades
+// on its own distance.
+const MARKER_GEO = new THREE.ConeGeometry(0.62, 1.35, 5);
 MARKER_GEO.rotateX(Math.PI);                    // point down at the animal
-const MARKER_MATS = {};
-function markerMaterial(boss) {
-  const key = boss ? 'boss' : 'normal';
-  if (!MARKER_MATS[key]) {
-    MARKER_MATS[key] = new THREE.MeshBasicMaterial({
-      color: boss ? 0xff5a2b : 0xffc23d,
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
-    });
-  }
-  return MARKER_MATS[key];
+
+function markerMeshes(boss) {
+  // A dark inverted hull behind a bright fill: the pip has to stay legible
+  // against both pale sky and bright grass, and a single flat colour cannot.
+  const outline = new THREE.Mesh(MARKER_GEO, new THREE.MeshBasicMaterial({
+    color: 0x2a1508, side: THREE.BackSide, transparent: true, depthTest: false, depthWrite: false,
+  }));
+  outline.scale.setScalar(1.42);
+  outline.renderOrder = 12;
+  const fill = new THREE.Mesh(MARKER_GEO, new THREE.MeshBasicMaterial({
+    color: boss ? 0xff3b1f : 0xffd23d, transparent: true, depthTest: false, depthWrite: false,
+  }));
+  fill.renderOrder = 13;
+  return { outline, fill };
 }
 
 const BAR_GREEN = new THREE.Color(0x5ada57);
@@ -305,12 +312,14 @@ export class Rhino {
     this.barGhost = 1;
 
     // Floats above the bar once a rhino is far enough away to be hard to spot.
-    const marker = new THREE.Mesh(MARKER_GEO, markerMaterial(!!v.boss));
+    const marker = new THREE.Group();
+    const { outline, fill } = markerMeshes(!!v.boss);
+    marker.add(outline, fill);
     marker.position.y = bar.position.y + 1.35 / v.scale;
-    marker.renderOrder = 12;
     marker.visible = false;
     root.add(marker);
     this.marker = marker;
+    this.markerMats = [outline.material, fill.material];
     this.markerBase = (v.boss ? 1.5 : 1) / v.scale;
 
     this.frontAnchor = new THREE.Object3D();
@@ -611,23 +620,31 @@ export class Rhino {
   }
 
   /** Billboard the bar and hold its apparent size roughly steady with range. */
-  faceBar(camQuat, camPos) {
+  /**
+   * Billboard the bar and size both overlays.
+   *
+   * Two different distances matter here. Apparent size follows the *camera*,
+   * but whether the marker is still useful follows the *player*: the camera
+   * trails ~23 units behind the rex, so measuring from it kept pips on rhinos
+   * that were already well inside breath range.
+   */
+  faceBar(camQuat, camPos, playerPos) {
     if (!this.bar.visible) return;
     this.bar.quaternion.copy(camQuat).premultiply(this._invRoot());
     if (!camPos) return;
-    const d = Math.hypot(camPos.x - this.pos.x, camPos.z - this.pos.z);
-    const grow = THREE.MathUtils.clamp(d / 26, 0.85, 1.9);
+    const camD = Math.hypot(camPos.x - this.pos.x, camPos.z - this.pos.z);
+    const grow = THREE.MathUtils.clamp(camD / 26, 0.85, 1.9);
     this.bar.scale.setScalar(this.barBase * grow);
-    this.barMat.uniforms.alpha.value = d > 95 ? Math.max(0, 1 - (d - 95) / 25) : 1;
+    this.barMat.uniforms.alpha.value = camD > 95 ? Math.max(0, 1 - (camD - 95) / 25) : 1;
 
-    // Beyond ~34 units a rhino is a grey speck on green grass, so give it a
-    // pip. It keeps growing with distance where the health bar fades out.
-    const far = d > 34 && this.alive;
+    const d = playerPos ? Math.hypot(playerPos.x - this.pos.x, playerPos.z - this.pos.z) : camD;
+    const far = d > MARKER_NEAR && this.alive;
     this.marker.visible = far;
     if (!far) return;
-    this.marker.scale.setScalar(this.markerBase * THREE.MathUtils.clamp(d / 28, 1.2, 3.4));
+    this.marker.scale.setScalar(this.markerBase * THREE.MathUtils.clamp(camD / 28, 1.2, 3.4));
     this.marker.position.y = this.bar.position.y + (1.35 + Math.sin(this.phase * 3) * 0.22) / this.scaleF;
-    this.marker.material.opacity = Math.min(1, (d - 34) / 12);
+    const a = Math.min(1, (d - MARKER_NEAR) / MARKER_FADE);
+    for (const m of this.markerMats) m.opacity = a;
   }
 
   _invRoot() {
@@ -638,7 +655,8 @@ export class Rhino {
     this.dead = true;
     if (this.marker) this.marker.visible = false;
     this.scene.remove(this.root);
-    this.root.traverse((o) => { if (o.isMesh && o !== this.marker) o.geometry.dispose(); });
+    this.root.traverse((o) => { if (o.isMesh && o.geometry !== MARKER_GEO) o.geometry.dispose(); });
+    for (const m of this.markerMats) m.dispose();
     for (const k in this.mats) this.mats[k].dispose?.();
     this.barMat.dispose();
   }

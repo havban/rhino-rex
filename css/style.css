@@ -402,7 +402,23 @@ body.playing #touch.on { display: block; }
   #combo { font-size: 17px; top: calc(70px + var(--safe-t)); }
   #stick { width: 96px; height: 96px; left: calc(16px + var(--safe-l)); bottom: calc(14px + var(--safe-b)); }
   #knob { width: 42px; height: 42px; margin: -21px 0 0 -21px; }
-  .tbtns { gap: 8px; bottom: calc(12px + var(--safe-b)); }
+  /* Four rows of pads is taller than a landscape phone can spare - with
+     Safari's bars visible the top pad climbed into the score panel. Lay them
+     out three wide and two deep instead, primary attacks nearest the thumb. */
+  .tbtns {
+    gap: 8px; bottom: calc(12px + var(--safe-b));
+    grid-template-columns: repeat(3, var(--tb));
+    grid-template-areas:
+      "ball tail fire"
+      "jump sprint bite";
+    align-items: center;
+  }
+  .tb.fire { grid-area: fire; }
+  .tb.bite { grid-area: bite; }
+  .tb.tail { grid-area: tail; }
+  .tb.ball { grid-area: ball; }
+  .tb.jump { grid-area: jump; }
+  .tb.sprint { grid-area: sprint; }
   /* pointers to rhinos that are off screen, only while a few are left */
 #offscreen { position: absolute; inset: 0; pointer-events: none; }
 #offscreen .arrow {
