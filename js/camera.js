@@ -58,7 +58,7 @@ export class ChaseCamera {
   update(dt, rex, world, shake = 0, zoom = 1, move = null) {
     this._recenter(dt, rex, move);
     const fwd = new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw));
-    const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
+    const right = new THREE.Vector3(-Math.cos(this.yaw), 0, Math.sin(this.yaw));
     const target = this._tmp.set(rex.pos.x, rex.y + CAMERA.lookHeight, rex.pos.z)
       .addScaledVector(fwd, CAMERA.lookAhead)
       .addScaledVector(right, CAMERA.shoulder);

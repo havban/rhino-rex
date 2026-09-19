@@ -461,7 +461,8 @@ export class Rex {
     const wish = new THREE.Vector3();
     if (this.alive) {
       const f = new THREE.Vector3(Math.sin(camYaw), 0, Math.cos(camYaw));
-      const r = new THREE.Vector3(Math.cos(camYaw), 0, -Math.sin(camYaw));
+      // screen-right for a camera looking along f (up × f), NOT (cos, 0, -sin)
+      const r = new THREE.Vector3(-Math.cos(camYaw), 0, Math.sin(camYaw));
       wish.addScaledVector(f, input.move.y).addScaledVector(r, input.move.x);
       if (wish.lengthSq() > 1) wish.normalize();
     }

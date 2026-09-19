@@ -41,11 +41,12 @@ Semburkan api, gigit, dan sabetkan ekor untuk bertahan gelombang demi gelombang.
 | Gigit | Klik kiri / `J` |
 | Semburan api | Klik kanan (tahan) / `F` |
 | Pukulan ekor | Klik tengah / `K` |
-| Jeda | `Esc` |
+| Jeda | `Esc`, atau tombol **II** di tengah atas layar |
 
 Di ponsel/tablet: joystick di kiri, geser separuh layar kanan untuk memutar kamera,
-tombol bulat di kanan untuk menyerang, lompat, dan lari. Layar akan masuk mode
-layar-penuh saat permainan dimulai. Mode lanskap paling lega, tapi potret tetap jalan.
+tombol bulat di kanan untuk menyerang, lompat, dan lari, tombol **II** di atas untuk jeda.
+Layar masuk mode layar-penuh saat permainan dimulai, dan kembali penuh saat kamu menekan
+"Lanjut" setelah jeda. Di laptop ada tombol **⛶ Layar penuh** di menu. Mode lanskap paling lega, tapi potret tetap jalan.
 
 ## Teknis
 

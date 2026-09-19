@@ -59,6 +59,7 @@ class Game {
     this.best = Number(localStorage.getItem('rr.best') || 0);
     this.restTimer = 0;
     this.time = 0;
+    this.wantFullscreen = false;
     this.clock = new THREE.Clock();
 
     this._bindUI();
@@ -69,7 +70,11 @@ class Game {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && this.state === 'playing') this.pause(true);
     });
-    this.input.onUnlock = () => { if (this.state === 'playing') this.pause(true); };
+    this.input.onUnlock = () => {
+      document.body.classList.remove('locked');
+      if (this.state === 'playing') this.pause(true);
+    };
+    this.input.onLock = () => document.body.classList.add('locked');
 
     this.chase.orbit(0, this.rex, 0);
     this.renderer.compile(this.scene, this.camera);
@@ -83,6 +88,16 @@ class Game {
     $('btn-resume').addEventListener('click', () => this.pause(false));
     $('btn-quit').addEventListener('click', () => this.toMenu());
     $('btn-help').addEventListener('click', () => $('help').classList.toggle('hidden'));
+    $('btn-pause').addEventListener('click', () => this.pause(true));
+
+    const fs = $('btn-fullscreen');
+    const paintFs = () => { fs.textContent = document.fullscreenElement ? '⛶ Keluar layar penuh' : '⛶ Layar penuh'; };
+    fs.addEventListener('click', () => {
+      if (document.fullscreenElement) { this.wantFullscreen = false; document.exitFullscreen?.(); }
+      else { this.wantFullscreen = true; this._goFullscreen(); }
+    });
+    document.addEventListener('fullscreenchange', paintFs);
+    paintFs();
     $('btn-help-close').addEventListener('click', () => $('help').classList.add('hidden'));
 
     const sound = $('btn-sound');
@@ -182,11 +197,17 @@ class Game {
     $('gameover').classList.add('hidden');
     $('pause').classList.add('hidden');
     $('hud').classList.remove('hidden');
-    if (this.input.touchActive) {
-      document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).catch(() => {});
-    }
+    if (this.input.touchActive) this.wantFullscreen = true;
+    this._goFullscreen();
     this.input.requestLock();
     this.banner('SIAP!', 'Badak datang…');
+  }
+
+  // Phones drop out of fullscreen whenever the app is backgrounded, so the
+  // resume button has to ask for it again (it is a user gesture, so it works).
+  _goFullscreen() {
+    if (!this.wantFullscreen || document.fullscreenElement) return;
+    document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).catch(() => {});
   }
 
   toMenu() {
@@ -211,6 +232,7 @@ class Game {
     } else if (!on && this.state === 'paused') {
       this.state = 'playing';
       $('pause').classList.add('hidden');
+      this._goFullscreen();
       this.input.requestLock();
     }
   }
