@@ -119,8 +119,13 @@ overrides the backend URL, `window.__rrTrack` replaces the analytics sink.
 ## Deploying
 
 **Game** — push to `main`; `.github/workflows/deploy.yml` publishes to Pages.
-GitHub serves `cache-control: max-age=600`, so a phone can hold stale JS for
-ten minutes. Use `?v=2` on the URL to bypass it when testing a fresh deploy.
+The workflow stamps the commit into `<meta name="build">`, writes
+`version.json`, and appends `?v=<commit>` to the stylesheet, the entry module,
+the Three.js import-map entry and every relative import between modules.
+That last part matters: Pages caches each file for ten minutes independently,
+so without versioned URLs a reload can mix new HTML with an old stylesheet.
+A browser still needs one fresh HTML fetch after a deploy — `?v=2` on the URL
+forces it.
 
 **Worker** — needs a Cloudflare API token:
 

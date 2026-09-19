@@ -133,8 +133,19 @@ scoped API token.
 ## Deployment
 
 **A fix is deployed but the phone still shows the old behaviour.**
-GitHub Pages sends `cache-control: max-age=600`. Load `?v=2`, or wait ten
-minutes. Confirm what is actually live by fetching the file:
+GitHub Pages sends `cache-control: max-age=600` on **each file separately**,
+so a reload can pair new HTML with a stale stylesheet or module. That is how a
+fixed touch-pad layout appeared to survive two deploys: the live CSS had the
+fix, the phone did not.
+
+The deploy workflow now appends `?v=<commit>` to the stylesheet, the entry
+module, the Three.js import-map entry and every relative `import` between
+modules, so a new build cannot be served as a mixture. A browser still needs
+one fresh HTML fetch to see it; `?v=2` on the URL forces that.
+
+Confirm what is actually live by fetching the file rather than trusting the
+browser:
 ```bash
-curl -s https://havban.github.io/rhino-rex/js/input.js | grep typingInto
+curl -s https://havban.github.io/rhino-rex/css/style.css | grep grid-template-areas
+curl -s https://havban.github.io/rhino-rex/ | grep -o 'style.css?v=[a-f0-9]*'
 ```

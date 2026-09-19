@@ -25,12 +25,24 @@ jobs:
 
       # Stamp the commit into the page and publish it alongside, so a running
       # tab can tell that a newer build exists and offer to reload.
-      - name: Stamp build id
+      # Stamp the commit into the page and publish it alongside, so a running
+      # tab can tell that a newer build exists and offer to reload. Every
+      # sub-resource URL gets the same stamp: GitHub Pages caches each file for
+      # ten minutes *independently*, so without this a reload can pair new HTML
+      # with a stale stylesheet or module - which is exactly how a fixed layout
+      # bug appeared to survive a deploy.
+      - name: Stamp build id and version asset URLs
         run: |
           BUILD="${GITHUB_SHA::7}"
           sed -i "s/__BUILD__/${BUILD}/" index.html
+          sed -i "s#href=\"css/style.css\"#href=\"css/style.css?v=${BUILD}\"#" index.html
+          sed -i "s#src=\"js/main.js\"#src=\"js/main.js?v=${BUILD}\"#" index.html
+          sed -i "s#\"./vendor/three.module.js\"#\"./vendor/three.module.js?v=${BUILD}\"#" index.html
+          # modules import each other relatively, so those specifiers need it too
+          sed -i -E "s#from '\./([a-z]+)\.js'#from './\1.js?v=${BUILD}'#g" js/*.js
           printf '{"build":"%s","at":"%s"}\n' "$BUILD" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > version.json
           echo "stamped ${BUILD}"
+          grep -c "?v=${BUILD}" index.html js/main.js
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
