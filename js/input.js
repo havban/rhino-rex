@@ -1,5 +1,15 @@
 // Keyboard + mouse (pointer lock) + touch input, normalised into one state object.
 
+// Keys the game actually reads. Anything else (typing a name, browser
+// shortcuts) must not be treated as "player switched to a keyboard".
+const GAME_KEYS = new Set([
+  'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+  'Space', 'ShiftLeft', 'ShiftRight', 'KeyJ', 'KeyK', 'KeyF', 'KeyL', 'KeyR', 'KeyE', 'Escape',
+]);
+
+const typingInto = (el) =>
+  !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+
 export class Input {
   constructor(canvas) {
     this.canvas = canvas;
@@ -27,18 +37,28 @@ export class Input {
 
   _bindKeyboard() {
     addEventListener('keydown', (e) => {
-      if (e.repeat) return;
+      if (e.repeat || typingInto(e.target)) return;
       const k = e.code;
       this.keys.add(k);
-      this._setMode(false);
+      // Only a real game key means "this player is on a keyboard". Typing a
+      // leaderboard name used to flip a phone out of touch mode, and since the
+      // touch layer is display:none when off, there was no way back.
+      if (GAME_KEYS.has(k)) this._setMode(false);
       if (k === 'Space') { this.jump = true; e.preventDefault(); }
       if (k === 'KeyJ') this.bite = true;
       if (k === 'KeyK') this.tail = true;
       if (k === 'KeyR' || k === 'KeyE') this.fireball = true;
       if (['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k)) e.preventDefault();
     });
-    addEventListener('keyup', (e) => this.keys.delete(e.code));
+    addEventListener('keyup', (e) => {
+      if (typingInto(e.target)) return;
+      this.keys.delete(e.code);
+    });
     addEventListener('blur', () => { this.keys.clear(); this.fire = false; this._touchFire = false; });
+
+    // Safety net: a touch anywhere restores touch mode, even when the pad is
+    // hidden and therefore cannot receive events itself.
+    addEventListener('touchstart', () => this._setMode(true), { capture: true, passive: true });
   }
 
   _bindMouse() {
