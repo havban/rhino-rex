@@ -173,6 +173,12 @@ body.locked #btn-pause { display: none; }
 .ab .nm { display: block; font-size: 11px; font-weight: 800; }
 .ab .key { display: block; font-size: 9px; letter-spacing: .06em; color: var(--ink-soft); }
 .ab.empty { filter: grayscale(.7) brightness(.92); }
+.ab .cdnum {
+  position: absolute; inset: 0; display: none; place-items: center; z-index: 3;
+  font-size: 20px; font-weight: 900; color: #fff; text-shadow: 0 2px 0 rgba(90, 50, 10, .85);
+}
+.ab.cooling .cdnum { display: grid; }
+.ab.ready { animation: pad-ready .55s ease-out; }
 .ab.item { border-color: #ffd45e; box-shadow: 0 0 0 3px rgba(255, 212, 94, .45), var(--shadow); }
 .ab .count, .tb .count, .tb b {
   position: absolute; right: 4px; top: 2px; font-size: 12px; font-weight: 900; color: #fff;
@@ -343,11 +349,28 @@ body.playing #touch.on { display: block; }
   width: var(--tb, 78px); height: var(--tb, 78px); border-radius: 50%; font-size: calc(var(--tb, 78px) * .39);
   background: rgba(255, 252, 240, .82); border: 3px solid #fff; box-shadow: var(--shadow);
 }
-.tb.bite::after, .tb.tail::after, .tb.fire::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: rgba(60, 42, 24, .42);
-  transform-origin: bottom; transform: scaleY(calc(1 - var(--cd)));
-  transition: transform .08s linear;
+/* Cooling pads sweep round like a clock hand rather than filling bottom-up:
+   on a circular button that reads instantly, and it tells you how much is
+   left rather than just "not yet". The cannon was missing from this list
+   entirely, so its six-second wait had no indicator at all. */
+.tb.bite::after, .tb.tail::after, .tb.fire::after, .tb.ball::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: 50%;
+  background: conic-gradient(rgba(52, 36, 20, .62) calc((1 - var(--cd)) * 360deg), transparent 0deg);
+}
+/* seconds remaining, for the long ones */
+.tb .cdnum {
+  position: absolute; inset: 0; display: none; place-items: center; z-index: 3;
+  font-size: 21px; font-weight: 900; color: #fff;
+  text-shadow: 0 2px 0 rgba(90, 50, 10, .85), 0 0 10px rgba(0, 0, 0, .45);
+}
+.tb.cooling .cdnum { display: grid; }
+.tb.cooling { filter: saturate(.55); }
+/* a short flash the moment it comes back */
+.tb.ready { animation: pad-ready .55s ease-out; }
+@keyframes pad-ready {
+  0% { box-shadow: 0 0 0 0 rgba(255, 210, 90, .95), var(--shadow); }
+  70% { box-shadow: 0 0 0 14px rgba(255, 210, 90, 0), var(--shadow); }
+  100% { box-shadow: var(--shadow); }
 }
 .tb.down { filter: brightness(.86); transform: scale(.95); }
 .tb.fire { grid-column: 2; }

@@ -1423,6 +1423,28 @@ class Game {
     }
     $('cd-fire').classList.toggle('empty', this.rex.fire <= REX.fireMinToStart);
 
+    // the cannon waits six seconds, which is long enough to want a number and
+    // a clear "it is back" signal rather than just a shrinking overlay
+    const cannonLeft = this.rex.cooldown.fireball;
+    const cooling = cannonLeft > 0.05;
+    const secs = cooling ? String(Math.ceil(cannonLeft)) : '';
+    for (const id of ['cd-ball', 'tb-ball']) {
+      const el = $(id);
+      el.classList.toggle('cooling', cooling);
+      $(`${id}-num`).textContent = secs;
+    }
+    if (this._ballWasCooling && !cooling) {
+      for (const id of ['cd-ball', 'tb-ball']) {
+        const el = $(id);
+        el.classList.remove('ready');
+        void el.offsetWidth;
+        el.classList.add('ready');
+        setTimeout(() => el.classList.remove('ready'), 600);
+      }
+      this.audio.pickup();
+    }
+    this._ballWasCooling = cooling;
+
     const card = $('cd-item'), pad = $('tb-item');
     if (this.item) {
       const cfg = ITEMS.kinds[this.item.kind];
