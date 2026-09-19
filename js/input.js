@@ -4,7 +4,7 @@
 // shortcuts) must not be treated as "player switched to a keyboard".
 const GAME_KEYS = new Set([
   'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
-  'Space', 'ShiftLeft', 'ShiftRight', 'KeyJ', 'KeyK', 'KeyF', 'KeyL', 'KeyR', 'KeyE', 'Escape',
+  'Space', 'ShiftLeft', 'ShiftRight', 'KeyJ', 'KeyK', 'KeyF', 'KeyL', 'KeyR', 'KeyE', 'KeyQ', 'Escape',
 ]);
 
 const typingInto = (el) =>
@@ -21,6 +21,7 @@ export class Input {
     this.bite = false;
     this.tail = false;
     this.fireball = false;
+    this.useItem = false;
     this.fire = false;               // held
     this.pointerLocked = false;
     this.hasTouch = !!(navigator.maxTouchPoints > 0) || 'ontouchstart' in window;
@@ -48,6 +49,7 @@ export class Input {
       if (k === 'KeyJ') this.bite = true;
       if (k === 'KeyK') this.tail = true;
       if (k === 'KeyR' || k === 'KeyE') this.fireball = true;
+      if (k === 'KeyQ') this.useItem = true;
       if (['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k)) e.preventDefault();
     });
     addEventListener('keyup', (e) => {
@@ -147,6 +149,7 @@ export class Input {
           if (act === 'bite') this.bite = true;
           if (act === 'tail') this.tail = true;
           if (act === 'ball') this.fireball = true;
+          if (act === 'item') this.useItem = true;
           if (act === 'fire') this._touchFire = true;
           if (act === 'jump') this.jump = true;
           if (act === 'sprint') this._touchSprint = !this._touchSprint;

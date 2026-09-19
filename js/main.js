@@ -15,7 +15,7 @@
 // Source. The menu carries a source link pointing at the exact deployed
 // commit, which is how that obligation is met here - keep it working.
 import * as THREE from 'three';
-import { REX, ATTACK, WAVES, WORLD, CAMERA, RHINO, FIREBALL, IMPACT, SCENERY, PROGRESS } from './config.js';
+import { REX, ATTACK, WAVES, WORLD, CAMERA, RHINO, FIREBALL, IMPACT, SCENERY, PROGRESS, ITEMS } from './config.js';
 import { World } from './world.js';
 import { Rex } from './rex.js';
 import { Rhino, spawnRing } from './rhino.js';
@@ -25,6 +25,7 @@ import { ChaseCamera } from './camera.js';
 import { Audio } from './audio.js';
 import { Music } from './music.js';
 import { Fireball } from './fireball.js';
+import { Mine } from './mine.js';
 import * as Scores from './scores.js';
 import * as Stats from './analytics.js';
 import * as Update from './update.js';
@@ -91,6 +92,9 @@ class Game {
     this.rhinos = [];
     this.pickups = [];
     this.balls = [];
+    this.mines = [];
+    this.item = null;              // the one item you are carrying
+    this.lastItem = null;          // biases the next roll away from a repeat
     this.state = 'menu';
     this.wave = 0;
     this.score = 0;
@@ -564,6 +568,9 @@ class Game {
     this.pickups.length = 0;
     for (const ball of this.balls) ball.dispose();
     this.balls.length = 0;
+    for (const m of this.mines) m.dispose();
+    this.mines.length = 0;
+    this.item = null;
     this.rex.cooldown.fireball = 0;
 
     this.rex.hp = saved ? Math.max(saved.hp, 45) : REX.maxHp;
@@ -833,6 +840,35 @@ class Game {
     return this.rex.pos.clone().addScaledVector(fwd, dist).setY(1.6);
   }
 
+  /** Throws or plants whatever you are carrying. */
+  useItem() {
+    if (!this.item || this.state !== 'playing' || !this.rex.alive) return false;
+    const kind = this.item.kind;
+    const cfg = ITEMS.kinds[kind];
+
+    if (kind === 'dinamit') {
+      const origin = this.rex.mouthPosition;
+      const fwd = this.rex.forward;
+      const target = this._ballTarget(fwd);
+      const flat = new THREE.Vector3(target.x - origin.x, 0, target.z - origin.z);
+      const t = Math.max(flat.length() / cfg.speed, 0.12);
+      const vy = (target.y - origin.y - 0.5 * cfg.gravity * t * t) / t;
+      const vel = new THREE.Vector3(flat.x / t, clamp(vy, -14, 26), flat.z / t);
+      this.balls.push(new Fireball(this.scene, origin, vel, 'dinamit'));
+      this.audio.bite();
+    } else {
+      const at = this.rex.pos.clone().addScaledVector(this.rex.forward, -2.5);
+      this.mines.push(new Mine(this.scene, at));
+      this.fx.dustBurst(at.clone().setY(0.3), 8, 0.8);
+      this.audio.stomp();
+    }
+
+    this.item.charges -= 1;
+    if (this.item.charges <= 0) this.item = null;
+    Stats.event(`item-used-${kind}`, `Item dipakai: ${kind}`);
+    return true;
+  }
+
   _spawnBall() {
     const origin = this.rex.mouthPosition;
     const fwd = this.rex.forward;
@@ -856,20 +892,43 @@ class Game {
       this.fx.trail(ball.pos, dt);
       const hit = ball.update(dt, this.rhinos, this.world);
       if (!hit) continue;
-      if (!hit.fizzle) this._explode(hit.pos, hit.direct);
+      if (!hit.fizzle) {
+        const cfg = ball.kind === 'dinamit' ? ITEMS.kinds.dinamit : null;
+        this._explode(hit.pos, hit.direct, cfg
+          ? { splash: cfg.splash, damage: cfg.damage, knockback: cfg.knockback, stun: cfg.stun, burn: false }
+          : {});
+      }
       ball.dispose();
       this.balls.splice(i, 1);
     }
   }
 
-  _explode(pos, direct) {
+  _updateMines(dt) {
+    const cfg = ITEMS.kinds.ranjau;
+    for (let i = this.mines.length - 1; i >= 0; i--) {
+      const m = this.mines[i];
+      if (m.update(dt, this.rhinos)) {
+        this._explode(m.pos.clone().setY(0.6), null, {
+          splash: cfg.splash, damage: cfg.damage, knockback: cfg.knockback, stun: cfg.stun, burn: false,
+        });
+        m.dispose();
+        this.mines.splice(i, 1);
+      }
+    }
+  }
+
+  _explode(pos, direct, opts = {}) {
+    const splash = opts.splash || FIREBALL.splash;
+    const power = opts.damage || FIREBALL.splashDamage;
+    const knock = opts.knockback || FIREBALL.knockback;
+    const stunBase = opts.stun || 0.6;
     this.fx.blast(pos);
     this.mp?.broadcastFx('blast', pos);
     for (const o of this.world.obstacles) {
       if (!o.alive || o.hp === undefined) continue;
       const d = Math.hypot(o.pos.x - pos.x, o.pos.z - pos.z) - o.radius;
-      if (d > FIREBALL.splash) continue;
-      const falloff = 1 - Math.max(0, d) / FIREBALL.splash;
+      if (d > splash) continue;
+      const falloff = 1 - Math.max(0, d) / splash;
       this.world.damage(o, SCENERY.blastDamage * falloff, 'fire', this.fx);
     }
     this.fx.shake(1.1);
@@ -877,17 +936,18 @@ class Game {
     this.audio.crunch();
     for (const r of this.livingRhinos()) {
       const d = r.pos.distanceTo(pos) - r.radius;
-      if (d > FIREBALL.splash) continue;
-      const falloff = 1 - Math.max(0, d) / FIREBALL.splash;
-      let dmg = FIREBALL.splashDamage * falloff;
+      if (d > splash) continue;
+      const falloff = 1 - Math.max(0, d) / splash;
+      let dmg = power * falloff;
       if (r === direct) dmg += FIREBALL.damage;
-      const knock = r.pos.clone().sub(pos).setY(0).normalize();
+      const away = r.pos.clone().sub(pos).setY(0).normalize();
       const dealt = r.takeDamage(dmg, {
-        knock, knockStrength: FIREBALL.knockback * falloff,
-        burn: FIREBALL.burn, stun: 0.5 + falloff * 0.6,
+        knock: away, knockStrength: knock * falloff,
+        burn: opts.burn === false ? undefined : FIREBALL.burn,
+        stun: stunBase * (0.6 + falloff),
       });
       this.fx.number(r.pos.clone().setY(4.4 * r.scaleF), Math.round(dealt), 'burn');
-      this.fx.thwack(r.pos.clone().setY(2.0 * r.scaleF), knock, IMPACT.sparksPerHit, 1.2);
+      this.fx.thwack(r.pos.clone().setY(2.0 * r.scaleF), away, IMPACT.sparksPerHit, 1.2);
       if (!r.alive) this._onKill(r, 'fireball');
     }
   }
@@ -967,7 +1027,59 @@ class Game {
     this.audio.snort();
     if (r.cfg.boss && this.run) this.run.bosses += 1;
     if (r.cfg.boss || Math.random() < WAVES.dropChance(this.wave)) this._dropPickup(r.pos.clone());
+    if (r.cfg.boss || Math.random() < ITEMS.dropChance) {
+      const at = r.pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 5, 0, (Math.random() - 0.5) * 5));
+      this._dropItemCrate(at, this._rollItem());
+    }
     if (this.rex.combo > 0 && this.rex.combo % 5 === 0) this.banner(`COMBO ×${this.rex.combo}`, 'Badak berjatuhan!');
+  }
+
+  /**
+   * Weighted pick, with the previous item's weight knocked down. Kart racers
+   * do something similar so you are not handed the same thing every time.
+   */
+  _rollItem() {
+    const entries = Object.entries(ITEMS.kinds);
+    let total = 0;
+    const weights = entries.map(([kind, cfg]) => {
+      const w = cfg.weight * (kind === this.lastItem ? ITEMS.repeatWeight : 1);
+      total += w;
+      return w;
+    });
+    let r = Math.random() * total;
+    for (let i = 0; i < entries.length; i++) {
+      r -= weights[i];
+      if (r <= 0) return entries[i][0];
+    }
+    return entries[0][0];
+  }
+
+  _dropItemCrate(pos, kind) {
+    const cfg = ITEMS.kinds[kind];
+    const g = new THREE.Group();
+    const crate = new THREE.Mesh(
+      new THREE.BoxGeometry(1.3, 1.3, 1.3),
+      new THREE.MeshLambertMaterial({ color: 0xffd45e, emissive: 0x5a3c00, emissiveIntensity: 0.35 })
+    );
+    g.add(crate);
+    for (const sx of [-1, 1]) {
+      const band = new THREE.Mesh(
+        new THREE.BoxGeometry(1.36, 0.18, 1.36),
+        new THREE.MeshLambertMaterial({ color: 0xc2410c })
+      );
+      band.position.y = sx * 0.34;
+      g.add(band);
+    }
+    const halo = new THREE.Mesh(
+      new THREE.RingGeometry(1.2, 1.6, 20),
+      new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })
+    );
+    halo.rotation.x = -Math.PI / 2;
+    halo.position.y = -1.1;
+    g.add(halo);
+    g.position.copy(pos).setY(1.4);
+    this.scene.add(g);
+    this.pickups.push({ mesh: g, t: 0, life: 26, kind, item: kind, label: cfg.label });
   }
 
   _dropPickup(pos) {
@@ -1032,6 +1144,7 @@ class Game {
     // ---- attack input, with a short buffer ----
     // Pressing an attack mid-animation used to be thrown away; hold it for a
     // moment instead so the next swing comes out the instant it can.
+    if (input.consume('useItem')) this.useItem();
     for (const k of ATTACK_KEYS) if (input.consume(k)) this._buffered[k] = INPUT_BUFFER;
     for (const k of ATTACK_KEYS) {
       if (this._buffered[k] <= 0) continue;
@@ -1050,6 +1163,7 @@ class Game {
     }
     this._spinDust(dt);
     this._updateBalls(dt);
+    this._updateMines(dt);
 
     const hitEvent = this.rex.update(dt, input, this.chase.yaw, this.world);
     if (hitEvent === 'fireball') this._spawnBall();
@@ -1137,12 +1251,23 @@ class Game {
       p.life -= dt;
       p.mesh.rotation.y += dt * 1.6;
       p.mesh.position.y = 1.3 + Math.sin(p.t * 3) * 0.22;
+      if (p.item) p.mesh.rotation.x += dt * 0.9;
       const d = p.mesh.position.distanceTo(this.rex.pos);
       if (d < 4.2 && this.state === 'playing' && this.rex.alive) {
-        this.rex.heal(26);
-        this.rex.fire = Math.min(REX.maxFire, this.rex.fire + 30);
-        this.fx.impact(p.mesh.position.clone(), 0x9dff8a, 20);
-        this.fx.number(p.mesh.position.clone(), '+26 HP', 'heal');
+        if (p.item) {
+          const cfg = ITEMS.kinds[p.item];
+          this.item = { kind: p.item, charges: cfg.charges };
+          this.lastItem = p.item;
+          this.fx.impact(p.mesh.position.clone(), 0xffe08a, 22);
+          this.fx.number(p.mesh.position.clone(), `${cfg.glyph} ${cfg.label}`, 'score');
+          this.banner(`${cfg.glyph} ${cfg.label.toUpperCase()}`, `${cfg.charges}× — tekan Q`);
+          Stats.once(`item-${p.item}`, `Item diambil: ${p.item}`);
+        } else {
+          this.rex.heal(26);
+          this.rex.fire = Math.min(REX.maxFire, this.rex.fire + 30);
+          this.fx.impact(p.mesh.position.clone(), 0x9dff8a, 20);
+          this.fx.number(p.mesh.position.clone(), '+26 HP', 'heal');
+        }
         this.audio.pickup();
         this.scene.remove(p.mesh);
         this.pickups.splice(i, 1);
@@ -1297,6 +1422,21 @@ class Game {
       $(id)?.style.setProperty('--cd', v);
     }
     $('cd-fire').classList.toggle('empty', this.rex.fire <= REX.fireMinToStart);
+
+    const card = $('cd-item'), pad = $('tb-item');
+    if (this.item) {
+      const cfg = ITEMS.kinds[this.item.kind];
+      card.classList.remove('hidden');
+      pad.classList.remove('hidden');
+      $('item-glyph').textContent = cfg.glyph;
+      $('item-name').textContent = cfg.label;
+      $('item-count').textContent = String(this.item.charges);
+      $('tb-item-count').textContent = String(this.item.charges);
+      pad.firstChild.textContent = cfg.glyph;
+    } else {
+      card.classList.add('hidden');
+      pad.classList.add('hidden');
+    }
     $('cd-ball').classList.toggle('empty', !this.rex.canFireball());
   }
 

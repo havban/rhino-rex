@@ -28,6 +28,21 @@ export const REX = {
   stomina: 100,
 };
 
+export const FIREBALL = {
+  range: 60,              // how far the cannon will lob and auto-aim
+  damage: 58,             // direct hit
+  splashDamage: 34,       // at the centre of the blast, falls off to zero at `splash`
+  splash: 7.0,
+  speed: 46,
+  gravity: -11,           // gentle arc, so you lead distant targets
+  life: 3.2,
+  radius: 0.75,
+  cost: 40,               // drains the same meter as the breath
+  cooldown: 6.0,          // deliberately slow: the cannon should be a decision, not a rotation
+  burn: { time: 3.6, dps: 13 },
+  knockback: 18,
+};
+
 export const ATTACK = {
   bite: {
     damage: 26,
@@ -53,7 +68,7 @@ export const ATTACK = {
     damage: 0,            // the projectile carries the damage (see FIREBALL)
     range: 0,
     halfAngle: 0,
-    cooldown: 3.0,
+    cooldown: FIREBALL.cooldown,
     windup: 0.26,
     active: 0.12,
   },
@@ -64,21 +79,6 @@ export const ATTACK = {
     burnDps: 11,
     burnTime: 3.2,
   },
-};
-
-export const FIREBALL = {
-  range: 60,              // how far the cannon will lob and auto-aim
-  damage: 58,             // direct hit
-  splashDamage: 34,       // at the centre of the blast, falls off to zero at `splash`
-  splash: 7.0,
-  speed: 46,
-  gravity: -11,           // gentle arc, so you lead distant targets
-  life: 3.2,
-  radius: 0.75,
-  cost: 40,               // drains the same meter as the breath
-  cooldown: 3.0,
-  burn: { time: 3.6, dps: 13 },
-  knockback: 18,
 };
 
 export const IMPACT = {
@@ -160,6 +160,31 @@ export const WAVES = {
     }
     if (wave % 5 === 0) out.push('matriarch');
     return out;
+  },
+};
+
+/**
+ * Weapon drops. You carry one item at a time, as in a kart racer, and the
+ * roll is weighted *against whatever you picked up last* so the same thing
+ * does not keep turning up.
+ */
+export const ITEMS = {
+  dropChance: 0.16,        // per kill, on top of the melon roll
+  repeatWeight: 0.25,      // last item's weight is multiplied by this
+  kinds: {
+    dinamit: {
+      label: 'Dinamit', glyph: '🧨', weight: 1.0, charges: 3,
+      fuse: 1.15,          // seconds before it goes off in the air or on the ground
+      damage: 95, splash: 10.5, knockback: 26, stun: 1.2,
+      speed: 34, gravity: -22,
+    },
+    ranjau: {
+      label: 'Ranjau', glyph: '💣', weight: 0.85, charges: 2,
+      arm: 0.8,            // seconds before it becomes live
+      life: 30,            // and how long it waits for someone to step on it
+      trigger: 3.4,
+      damage: 130, splash: 9, knockback: 34, stun: 2.0,
+    },
   },
 };
 

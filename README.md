@@ -19,7 +19,11 @@ Semburkan api, gigit, dan sabetkan ekor untuk bertahan gelombang demi gelombang.
     satu putaran penuh sehingga ekornya menyapu 360°, lalu kembali ke arah semula.
   - ☄️ **Bola api** — lemparan melengkung yang meledak: kerusakan langsung + ledakan area
     yang melempar dan membakar. Membidik sendiri ke badak yang ada di depanmu, memakai
-    40 meteran api, jeda 3 detik.
+    40 meteran api, jeda 6 detik supaya jadi pilihan, bukan tombol andalan.
+- **🎁 Peti item** yang sesekali jatuh dari badak: **🧨 dinamit** (lemparan bersumbu, 3×)
+  atau **💣 ranjau** (dipasang di tanah, meledak saat badak lewat, 2×). Kamu membawa satu
+  item sekaligus dan memakainya dengan **Q**. Undiannya ala game balap kart: bobot item
+  yang terakhir kamu ambil dipotong jadi seperempat, jadi yang muncul cenderung berganti.
 - **Badak yang menyeruduk** — mereka mengais tanah dulu (aba-aba), lalu menerjang lurus.
   Menepilah; kalau mereka menabrak pohon atau batu mereka pusing dan menerima kerusakan ekstra.
 - **Empat jenis badak**: anakan yang gesit, banteng, badak berbaju zirah, dan **Matriark** raksasa

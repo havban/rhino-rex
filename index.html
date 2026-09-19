@@ -67,6 +67,7 @@
     <div class="ab" id="cd-fire"><span class="glyph">🔥</span><span class="key">RMB / F</span><span class="nm">Semburan Api</span></div>
     <div class="ab" id="cd-tail"><span class="glyph">🌀</span><span class="key">MMB / K</span><span class="nm">Pukulan Ekor</span></div>
     <div class="ab" id="cd-ball"><span class="glyph">☄️</span><span class="key">R</span><span class="nm">Bola Api</span></div>
+    <div class="ab item hidden" id="cd-item"><span class="glyph" id="item-glyph">🧨</span><span class="key">Q</span><span class="nm" id="item-name">Dinamit</span><b class="count" id="item-count">3</b></div>
   </div>
 
   <div id="banner"><b id="banner-title"></b><span id="banner-sub"></span></div>
@@ -88,6 +89,7 @@
     <button class="tb bite" id="tb-bite" data-act="bite">🦷</button>
     <button class="tb tail" id="tb-tail" data-act="tail">🌀</button>
     <button class="tb ball" id="tb-ball" data-act="ball">☄️</button>
+    <button class="tb item hidden" id="tb-item" data-act="item">🧨<b id="tb-item-count">3</b></button>
     <button class="tb jump" data-act="jump">⤴</button>
     <button class="tb sprint" data-act="sprint">»</button>
   </div>
@@ -103,6 +105,7 @@
       <div><b>🦷 Gigitan</b><span>Cepat dan menyakitkan di jarak dekat</span></div>
       <div><b>🌀 Pukulan Ekor</b><span>T-Rex berputar penuh menghantam semua badak di sekeliling, lalu kembali menghadap semula</span></div>
       <div><b>☄️ Bola Api</b><span>Lemparan melengkung yang meledak — pakai meteran api</span></div>
+      <div><b>🎁 Peti Item</b><span>Dinamit atau ranjau jatuh dari badak — tekan Q untuk memakainya</span></div>
       <div><b>🦏 Waspada Serudukan</b><span>Badak mengais tanah sebelum menerjang — menepilah!</span></div>
     </div>
     <button id="btn-resume-run" class="primary hidden">▶ LANJUTKAN</button>
@@ -152,7 +155,8 @@
       <li><b>Klik kiri / J</b><span>Gigit</span></li>
       <li><b>Klik kanan / F</b><span>Semburan api (tahan)</span></li>
       <li><b>Klik tengah / K</b><span>Pukulan ekor</span></li>
-      <li><b>R</b><span>Bola api (meledak, butuh 40 meteran api)</span></li>
+      <li><b>R</b><span>Bola api (meledak, butuh 40 meteran api, jeda 6 detik)</span></li>
+      <li><b>Q</b><span>Pakai item yang sedang dibawa (dinamit / ranjau)</span></li>
       <li><b>Esc</b><span>Jeda (atau tombol <b>II</b> di atas layar)</span></li>
     </ul>
     <p class="hint">Di ponsel: joystick kiri untuk gerak, geser bagian layar lainnya untuk memutar kamera ke sudut mana pun, tombol bulat untuk menyerang.</p>

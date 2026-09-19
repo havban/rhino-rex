@@ -16,7 +16,7 @@ fire meter refills at 15/s continuously.
 | 🦷 Bite | LMB / `J` | 26 | 7.2, 54° cone | 0.62 s | Fastest; best single-target DPS |
 | 🔥 Fire breath | RMB / `F` | 42/s | 22, 34° cone | — | Drains 27/s; sets a 3.2 s burn at 11/s; ignites trees |
 | 🌀 Tail spin | MMB / `K` | 21 | 10.2, **360°** | 1.5 s | Turns onto the nearest target, spins a full turn, knocks back 26 and stuns 1.1 s |
-| ☄️ Fireball | `R` / `E` | 58 direct + 34 splash | ~14–58 lobbed | 3.0 s | Costs 40 fire; 7-unit blast with falloff, burn and knockback |
+| ☄️ Fireball | `R` / `E` | 58 direct + 34 splash | ~14–58 lobbed | **6.0 s** | Costs 40 fire; 7-unit blast with falloff, burn and knockback |
 
 Two details that matter:
 
@@ -27,8 +27,30 @@ Two details that matter:
   facing. The camera and aim never rotate with it, so a 360° attack does not
   spin the screen.
 
+The cannon's long cooldown is deliberate: at 3 s it was simply the best button
+to press, so it is now a decision rather than part of a rotation.
+
 Attack presses are buffered for 0.28 s, so a press during another animation
 fires as soon as it can rather than being dropped.
+
+## Items
+
+Rhinos drop the occasional crate (16 % per kill, always from a Matriarch). You
+carry **one item at a time** and fire it with `Q`, or the extra pad that
+appears on touch only while you are holding something.
+
+| Item | Charges | What it does |
+| --- | --- | --- |
+| 🧨 **Dinamit** | 3 | Lobbed like the cannon but on a 1.15 s fuse — it goes off in the air or where it lands. 95 damage over a 10.5-unit blast, no burn. |
+| 💣 **Ranjau** | 2 | Planted behind you, arms after 0.8 s, then waits up to 30 s. 130 damage over 9 units plus a 2 s stun when something comes within 3.4 units. |
+
+The mine is the answer to a charging rhino: a charge commits to a straight
+line, and a mine punishes exactly that.
+
+**Which item you get** is a weighted roll in which **the item you picked up
+last has its weight cut to a quarter** — borrowed from kart racers, so the
+same thing does not keep turning up. With dynamite as the last pickup, a
+400-roll sample came out 24 % dynamite / 76 % mine.
 
 ### Movement
 
