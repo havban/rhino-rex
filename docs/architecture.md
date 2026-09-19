@@ -102,6 +102,14 @@ Two independent graphs under one `AudioContext`:
 Music sits on its own bus under the master gain, so the sound toggle silences
 everything while the music picker only affects music.
 
+Leaving the page stops the audio outright rather than turning it down.
+`visibilitychange`, `pagehide` and the sound toggle all route through
+`Game._silence()` / `Game._wake()`: `_silence()` stops the music scheduler,
+kills the flame loop and **suspends** the `AudioContext`, so a backgrounded or
+closed tab makes no sound and schedules nothing. `_wake()` resumes the context
+and restarts the music, which was stopped rather than ducked. Pausing inside
+the game still only ducks the music to 0.28.
+
 ## Input
 
 `js/input.js` normalises keyboard, mouse (pointer lock *and* drag fallback) and

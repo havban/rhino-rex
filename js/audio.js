@@ -23,6 +23,10 @@ export class Audio {
   }
 
   resume() { this.ctx?.resume?.(); }
+  // Backgrounding the tab has to stop the graph, not just turn it down: a
+  // suspended context freezes currentTime, so nothing rings on in the
+  // background and nothing is scheduled behind our backs.
+  suspend() { this.ctx?.suspend?.().catch?.(() => {}); }
   setEnabled(on) { this.enabled = on; if (this.master) this.master.gain.value = on ? 0.5 : 0; }
 
   _noise(sec) {

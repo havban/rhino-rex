@@ -116,9 +116,18 @@ class Game {
     addEventListener('orientationchange', () => setTimeout(() => this._resize(), 120));
     visualViewport?.addEventListener('resize', () => this._resize());
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) { this._saveRun(); if (this.state === 'playing') this.pause(true); }
+      if (document.hidden) {
+        this._saveRun();
+        if (this.state === 'playing') this.pause(true);
+        this._silence();
+      } else {
+        this._wake();
+      }
     });
-    addEventListener('pagehide', () => this._saveRun());     // the reliable one on mobile
+    // pagehide is the reliable one on mobile: it fires when the tab is closed,
+    // swiped away or frozen, where unload often does not.
+    addEventListener('pagehide', () => { this._saveRun(); this._silence(); });
+    addEventListener('pageshow', (e) => { if (e.persisted) this._wake(); });
     this.input.onUnlock = () => {
       document.body.classList.remove('locked');
       if (this.state === 'playing') this.pause(true);
@@ -622,6 +631,25 @@ class Game {
   // Phones drop out of fullscreen whenever the app is backgrounded, so the
   // resume button has to ask for it again (it is a user gesture, so it works).
   /** Boots the audio context on demand and plays the chosen track. */
+  /**
+   * Leaving the page - switching apps, locking the phone, closing the tab -
+   * must not leave the soundtrack playing. Pausing only turned it down, so a
+   * backgrounded game kept singing.
+   */
+  _silence() {
+    this.music?.stop(0.2);
+    this.audio.flame(false);
+    this.fx?.stopFlame();
+    this.audio.suspend();
+  }
+
+  /** Coming back: the context needs waking, and the music was stopped, not ducked. */
+  _wake() {
+    if (!this.soundOn) return;
+    this.audio.resume();
+    if (this.musicStyle !== 'off' && this.state !== 'dead') this._startMusic();
+  }
+
   _startMusic(preview = false) {
     this.audio.init();
     this.audio.resume();
