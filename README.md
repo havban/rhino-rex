@@ -28,7 +28,13 @@ Semburkan api, gigit, dan sabetkan ekor untuk bertahan gelombang demi gelombang.
   Menepilah; kalau mereka menabrak pohon atau batu mereka pusing dan menerima kerusakan ekstra.
 - **Empat jenis badak**: anakan yang gesit, banteng, badak berbaju zirah, dan **Matriark** raksasa
   yang muncul tiap gelombang kelima.
-- **Tema cerah**: padang rumput hijau, langit biru, bunga warna-warni, awan, dan perbukitan.
+- **Tiga arena** yang bisa dipilih di menu (tombol **Arena**), semuanya seukuran dan
+  seaturan — yang berbeda cuma suasananya:
+  - 🌿 **Padang Ceria** — rumput hijau, langit biru, bunga warna-warni, awan, perbukitan.
+  - 🌋 **Kawah Vulkanik** — tanah basal gelap, kolam lava menyala, bara beterbangan,
+    pohon hangus, dan gunung berapi berpuncak api di kejauhan.
+  - 🐊 **Rawa Berkabut** — air payau dangkal, alang-alang tinggi, bakau berakar tunjang,
+    kunang-kunang, dan kabut tipis.
 - **Model halus**: T-Rex bertulang (SkinnedMesh) dengan tengkorak dalam bergigi, tangan
   kecil bercakar, dan kaki digitigrade; badak bertubuh tong dengan dua tanduk.
 - Gelombang tanpa akhir, skor + combo, buah semangka penyembuh.
@@ -185,7 +191,7 @@ js/config.js        # semua angka penyetelan (damage, kecepatan, gelombang)
 js/main.js          # loop utama, gelombang, resolusi serangan
 js/rex.js           # model + animasi + gerak T-Rex
 js/rhino.js         # model + AI badak (kejar → aba-aba → seruduk → pusing)
-js/world.js         # arena, langit, pohon, batu, rumput
+js/world.js         # arena (3 tema), langit, pohon, batu, rumput
 js/geom.js          # pembangun permukaan halus (sapuan tabung, elipsoid, kapsul)
 js/fireball.js      # proyektil bola api (lintasan melengkung + ledakan)
 js/scores.js        # papan skor lokal (localStorage)

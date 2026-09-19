@@ -60,7 +60,7 @@ js/main.js            game loop, waves, combat resolution, UI wiring  (largest f
 js/config.js          every tuning number lives here — start here to rebalance
 js/rex.js             player: skinned T-Rex model, animation, attacks
 js/rhino.js           enemy: model, charge AI, replicated mode
-js/world.js           arena, sky, destructible trees/rocks, collision
+js/world.js           arena (3 themes from ARENAS), sky, destructible trees/rocks, collision
 js/geom.js            smooth-surface builders (swept tubes, ellipsoids, capsules)
 js/fx.js              particles, damage numbers, camera shake
 js/camera.js          third-person chase camera with auto-recentre

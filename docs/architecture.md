@@ -65,6 +65,23 @@ ratio adapts at runtime:
 | medium | on | on (1024) | 2200 | 1.5 |
 | high | on | on (2048) | 4200 | 2 (1.5 on touch) |
 
+## Arenas
+
+`js/world.js` builds the whole arena from one entry in `ARENAS`
+(`js/config.js`) — sky gradient, fog, three lights, ground texture, grass,
+motes, pools, trees, boulders, clouds, hills and the edge ring. Nothing about
+the place is hard-coded in the builder, so a new arena is a palette plus a few
+style switches.
+
+Everything the arena owns is parented to a single `World.root` group.
+`World.dispose()` walks it, frees every geometry and material once, and
+unhooks the group, which is what makes `Game.setArena()` able to swap arenas
+mid-run without a reload. Repeated parts (mangrove stilt roots, charred
+branches) share one geometry and vary by instance scale.
+
+See [gameplay.md](gameplay.md) for the three arenas and why they are cosmetic
+only.
+
 ## Procedural geometry
 
 `js/geom.js` is the reason the creatures look smooth without any modelling

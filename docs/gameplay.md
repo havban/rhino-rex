@@ -141,6 +141,29 @@ screen gets an arrow at the screen edge pointing at it. The cap is deliberate:
 sixteen arrows would be noise, but hunting the final straggler across a
 150-unit arena is the moment you actually need help.
 
+## Arenas
+
+Three places to fight, picked from **Arena** in the menu and remembered in
+`localStorage` under `rr.arena`. They are **cosmetic only**: same 150-unit
+radius, same scenery counts, same rhinos, same scoring — so no arena is easier
+than another and leaderboard entries stay comparable.
+
+| Arena | Look | Details |
+| --- | --- | --- |
+| 🌿 Padang Ceria | bright meadow, blue sky | flowers, leafy trees, wooden posts |
+| 🌋 Kawah Vulkanik | dark basalt under a purple-to-orange sky | glowing lava pools, rising embers, burnt-out snags, obsidian shards, volcanoes with lit craters |
+| 🐊 Rawa Berkabut | misty wetland | standing water, tall reeds, mangroves on stilt roots, fireflies, short fog |
+
+Every arena is one entry in `ARENAS` (`js/config.js`): palette, fog, light
+levels, ground texture colours, and switches for the tree style
+(`leafy` / `charred` / `mangrove`), the fence style (`post` / `shard`), the
+motes (`flower` / `ember` / `firefly`) and the pools. `js/world.js` reads
+nothing else, so a fourth arena is a new entry, not new code.
+
+Switching is live — `Game.setArena()` disposes the old `World` and builds the
+new one, even mid-run. In co-op the guest is switched to the host's arena by
+the `welcome` message, so both players see the same place.
+
 ## Destructible scenery
 
 Trees and boulders inside the arena have health and come back later, so the

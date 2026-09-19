@@ -15,7 +15,7 @@
 // Source. The menu carries a source link pointing at the exact deployed
 // commit, which is how that obligation is met here - keep it working.
 import * as THREE from 'three';
-import { REX, ATTACK, WAVES, WORLD, CAMERA, RHINO, FIREBALL, IMPACT, SCENERY, PROGRESS, ITEMS } from './config.js';
+import { REX, ATTACK, WAVES, WORLD, CAMERA, RHINO, FIREBALL, IMPACT, SCENERY, PROGRESS, ITEMS, ARENAS } from './config.js';
 import { World } from './world.js';
 import { Rex } from './rex.js';
 import { Rhino, spawnRing } from './rhino.js';
@@ -56,6 +56,7 @@ class Game {
     this.quality = localStorage.getItem('rr.quality') || (matchMedia('(max-width: 900px)').matches ? 'medium' : 'high');
     this.soundOn = localStorage.getItem('rr.sound') !== 'off';
     this.musicStyle = localStorage.getItem('rr.music') || 'ceria';
+    this.arena = ARENAS[localStorage.getItem('rr.arena')] ? localStorage.getItem('rr.arena') : 'padang';
 
     this.coarse = matchMedia('(pointer: coarse)').matches;
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: this.quality !== 'low', powerPreference: 'high-performance' });
@@ -74,7 +75,7 @@ class Game {
     this.camera = new THREE.PerspectiveCamera(CAMERA.fov, innerWidth / innerHeight, 0.4, 900);
     this.chase = new ChaseCamera(this.camera);
 
-    this.world = new World(this.scene, this.quality);
+    this.world = new World(this.scene, this.quality, this.arena);
     this.rex = new Rex(this.scene);
     this.fx = new FX(this.scene, this.camera, $('fx-layer'));
     this.audio = new Audio();
@@ -253,6 +254,19 @@ class Game {
     q.addEventListener('change', () => {
       localStorage.setItem('rr.quality', q.value);
       location.reload();
+    });
+
+    const arena = $('sel-arena');
+    for (const [key, cfg] of Object.entries(ARENAS)) {
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = `${cfg.glyph} ${cfg.label}`;
+      arena.appendChild(opt);
+    }
+    arena.value = this.arena;
+    arena.addEventListener('change', () => {
+      this.setArena(arena.value);
+      Stats.once(`arena-${this.arena}`, `Arena dipilih: ${ARENAS[this.arena].label}`);
     });
 
     addEventListener('keydown', (e) => {
@@ -631,6 +645,22 @@ class Game {
   // Phones drop out of fullscreen whenever the app is backgrounded, so the
   // resume button has to ask for it again (it is a user gesture, so it works).
   /** Boots the audio context on demand and plays the chosen track. */
+  /**
+   * Swap arenas without reloading: the old World disposes its geometry and a
+   * new one builds in its place. Safe mid-run - the arena only changes how
+   * the place looks, never its size or the rules.
+   */
+  setArena(name, { remember = true, announce = true } = {}) {
+    if (!ARENAS[name] || name === this.arena) return;
+    this.arena = name;
+    if (remember) localStorage.setItem('rr.arena', name);
+    this.world.dispose();
+    this.world = new World(this.scene, this.quality, name);
+    const picker = $('sel-arena');
+    if (picker && picker.value !== name) picker.value = name;
+    if (announce && this.state === 'playing') this.banner(ARENAS[name].label.toUpperCase(), 'Arena berganti');
+  }
+
   /**
    * Leaving the page - switching apps, locking the phone, closing the tab -
    * must not leave the soundtrack playing. Pausing only turned it down, so a

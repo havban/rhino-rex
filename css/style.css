@@ -283,12 +283,13 @@ button:active { transform: translateY(2px) scale(.99); }
    Two grids keep the columns lined up at every width. */
 #menu .row { display: grid; gap: 8px; }
 #menu .row.actions { grid-template-columns: repeat(4, 1fr); }
-#menu .row.settings { grid-template-columns: repeat(3, 1fr); margin-top: 8px; }
+#menu .row.settings { grid-template-columns: repeat(4, 1fr); margin-top: 8px; }
 .ghost {
   padding: 10px 16px; font-size: 14px; color: var(--ink);
   background: rgba(255, 255, 255, .8); border: 2px solid #ffe0b0;
 }
 #menu .row .ghost { padding: 10px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 860px) { #menu .row.settings { grid-template-columns: 1fr 1fr; } }
 .ghost.sel { display: inline-flex; gap: 8px; align-items: center; }
 #menu .row .ghost.sel { display: grid; grid-template-columns: auto 1fr; gap: 8px; text-align: left; }
 #menu .row .ghost.sel select { min-width: 0; width: 100%; }

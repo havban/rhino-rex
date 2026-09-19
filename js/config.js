@@ -218,6 +218,74 @@ export const CAMERA = {
   lateralDeadzone: 0.45,    // strafing must not drag the camera round (feedback spin)
 };
 
+/**
+ * Arenas. Same rules and the same arena size everywhere - only the look
+ * changes, so nothing here can make one harder than another. Every value is
+ * fed to js/world.js, which builds the whole place procedurally.
+ */
+export const ARENAS = {
+  padang: {
+    label: 'Padang Ceria', glyph: '\u{1F33F}',
+    background: 0x8fd9ff,
+    sky: { top: 0x4fb8ff, horizon: 0xfff0d0 },
+    fog: { color: 0xcdeeff, near: 90, far: 320 },
+    hemi: { sky: 0xdff3ff, ground: 0x5d8e42, intensity: 0.95 },
+    sun: { color: 0xfff6d8, intensity: 2.0, dir: [0.45, 0.62, -0.5] },
+    ambient: { color: 0xfff4e0, intensity: 0.22 },
+    ground: { base: '#6fbe46', flecks: ['rgba(96,180,64,.9)', 'rgba(142,210,88,.85)', 'rgba(74,152,52,.8)', 'rgba(236,226,122,.5)'] },
+    patch: { color: 0xffe9a8, opacity: 0.16 },
+    blades: { hue: 0.24, spread: 0.07, sat: 0.62, light: 0.48, density: 1, height: 1, width: 1 },
+    motes: { kind: 'flower', colors: [0xff6f91, 0xffd93d, 0xff9f68, 0xf5f7ff, 0xc77dff], density: 1, size: 1 },
+    tree: { style: 'leafy', bark: 0xa9703f, leaves: [0x62c94a, 0x7fd65c, 0x4fb53d], stump: 0x4a3a2c },
+    rock: { color: 0xb9b0a2, emissive: 0x000000, glow: 0 },
+    clouds: { color: 0xffffff, emissive: 0xdfefff, intensity: 0.35, density: 1, y: 55, flat: 0.62 },
+    hills: { hue: 0.28, sat: 0.35, light: 0.52, height: 1, width: 1, cap: null },
+    fence: { color: 0xd9a86c, style: 'post' },
+    pools: null,
+  },
+
+  vulkanik: {
+    label: 'Kawah Vulkanik', glyph: '\u{1F30B}',
+    background: 0x8c4a3f,
+    sky: { top: 0x3b1f63, horizon: 0xff9a3c },
+    // light fog only: the crater should look hot, not smothered
+    fog: { color: 0xb4663f, near: 150, far: 430 },
+    hemi: { sky: 0xffb070, ground: 0x4a1c16, intensity: 0.55 },
+    sun: { color: 0xffc98c, intensity: 1.5, dir: [-0.4, 0.5, -0.55] },
+    ambient: { color: 0xff8a44, intensity: 0.18 },
+    ground: { base: '#463943', flecks: ['rgba(52,40,48,.92)', 'rgba(82,64,70,.85)', 'rgba(198,80,26,.5)', 'rgba(255,150,54,.3)'] },
+    patch: { color: 0xff5a10, opacity: 0.12 },
+    blades: { hue: 0.06, spread: 0.04, sat: 0.5, light: 0.34, density: 0.35, height: 0.75, width: 1.1 },
+    motes: { kind: 'ember', colors: [0xff8c28, 0xffc247, 0xff5a1e], density: 1.3, size: 0.6 },
+    tree: { style: 'charred', bark: 0x4a3b3e, leaves: [0x3b2d30, 0x473539, 0x2f2426], stump: 0x2b2224 },
+    rock: { color: 0x51454d, emissive: 0x7a2604, glow: 0.18 },
+    clouds: { color: 0x7d6470, emissive: 0x3a1f2c, intensity: 0.2, density: 0.8, y: 70, flat: 0.5 },
+    hills: { hue: 0.94, sat: 0.28, light: 0.16, height: 1.35, width: 0.9, cap: 0xff6a1e },
+    fence: { color: 0x3a2f35, style: 'shard' },
+    pools: { count: 11, color: 0xff5406, emissive: 0xff4d00, opacity: 0.96, size: 1.0 },
+  },
+
+  rawa: {
+    label: 'Rawa Berkabut', glyph: '\u{1F40A}',
+    background: 0x9ed9cf,
+    sky: { top: 0x63c9c0, horizon: 0xe6f7cf },
+    fog: { color: 0xb6ded1, near: 48, far: 205 },
+    hemi: { sky: 0xcdeee2, ground: 0x24452e, intensity: 0.85 },
+    sun: { color: 0xeaffd8, intensity: 1.55, dir: [0.3, 0.55, 0.6] },
+    ambient: { color: 0xcfeade, intensity: 0.24 },
+    ground: { base: '#3f6149', flecks: ['rgba(44,74,52,.92)', 'rgba(72,110,78,.85)', 'rgba(48,104,96,.7)', 'rgba(118,146,92,.4)'] },
+    patch: { color: 0x3fae94, opacity: 0.18 },
+    blades: { hue: 0.3, spread: 0.06, sat: 0.5, light: 0.36, density: 1.25, height: 1.9, width: 0.7 },
+    motes: { kind: 'firefly', colors: [0xd8ff6a, 0xa8ff8a, 0xfff3a0], density: 0.8, size: 0.7 },
+    tree: { style: 'mangrove', bark: 0x5d4d3a, leaves: [0x2d7048, 0x458a5c, 0x1f5a3a], stump: 0x3a3226 },
+    rock: { color: 0x74805e, emissive: 0x000000, glow: 0 },
+    clouds: { color: 0xdff2ea, emissive: 0xbfe0d6, intensity: 0.3, density: 1.1, y: 34, flat: 0.34 },
+    hills: { hue: 0.33, sat: 0.32, light: 0.34, height: 0.75, width: 1.3, cap: null },
+    fence: { color: 0x7a8a5c, style: 'post' },
+    pools: { count: 22, color: 0x2f93a8, emissive: 0x000000, opacity: 0.52, size: 1.9 },
+  },
+};
+
 export const COLORS = {
   sky: 0x8fd9ff,
   horizon: 0xfff2cf,

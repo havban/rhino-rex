@@ -64,7 +64,7 @@ export class Session {
     if (this.isHost) this._avatar(peer.id, peer.name);
     this.game.banner('PEMAIN BERGABUNG', peer.name || 'Pemain');
     if (this.isHost) {
-      this.net.send({ t: 'welcome', wave: this.game.wave, score: this.game.score }, 'evt');
+      this.net.send({ t: 'welcome', wave: this.game.wave, score: this.game.score, arena: this.game.arena }, 'evt');
     }
   }
 
@@ -130,6 +130,9 @@ export class Session {
       case 'welcome': {
         this.remoteWave = msg.wave;
         this.remoteScore = msg.score;
+        // both players fight in the host's arena, so screenshots and calls
+        // like "behind the big rock" mean the same thing to each of them
+        if (!this.isHost && msg.arena) this.game.setArena(msg.arena, { remember: false });
         break;
       }
       case 'over': if (!this.isHost) this.game.gameOver(); break;
