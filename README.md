@@ -193,6 +193,17 @@ js/music.js         # musik latar prosedural (4 gaya, lapisan adaptif)
 
 Objek `window.__game` diekspos untuk debugging (`state`, `rex`, `rhinos`, `cfg`, ...).
 
+## Dokumentasi
+
+Dokumentasi teknis lengkap ada di [`docs/`](docs/) (bahasa Inggris, untuk yang mengerjakan
+kodenya): [arsitektur](docs/architecture.md), [gameplay](docs/gameplay.md),
+[multiplayer](docs/multiplayer.md), [backend](docs/backend.md),
+[analitik](docs/analytics.md), [pengujian](docs/testing.md), dan
+[pemecahan masalah](docs/troubleshooting.md).
+
+Mau ikut mengubah kodenya? Baca [`AGENTS.md`](AGENTS.md) dulu — isinya aturan main repo ini
+dan daftar jebakan yang sudah pernah memakan waktu.
+
 ## Lisensi
 
 MIT
