@@ -41,18 +41,39 @@ export class Input {
 
   _bindMouse() {
     this._mouseFire = false;
+    this._drag = null;
     this.canvas.addEventListener('mousedown', (e) => {
-      if (!this.pointerLocked) { this.requestLock(); return; }
+      if (!this.pointerLocked) {
+        // works even if the browser refuses pointer lock: drag to orbit
+        this._drag = { x: e.clientX, y: e.clientY, moved: 0, button: e.button };
+        this.requestLock();
+        return;
+      }
       if (e.button === 0) this.bite = true;            // left  — bite
       if (e.button === 2) this._mouseFire = true;      // right — fire breath (hold)
       if (e.button === 1) this.tail = true;            // middle — tail whip
     });
-    addEventListener('mouseup', (e) => { if (e.button === 2) this._mouseFire = false; });
+    addEventListener('mouseup', (e) => {
+      if (e.button === 2) this._mouseFire = false;
+      if (this._drag && e.button === this._drag.button) {
+        // a click that did not turn into a drag still counts as an attack
+        if (this._drag.moved < 7 && e.button === 0 && !this.pointerLocked) this.bite = true;
+        this._drag = null;
+      }
+    });
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     addEventListener('mousemove', (e) => {
-      if (!this.pointerLocked) return;
-      this.look.dx += e.movementX;
-      this.look.dy += e.movementY;
+      if (this.pointerLocked) {
+        this.look.dx += e.movementX;
+        this.look.dy += e.movementY;
+        return;
+      }
+      if (!this._drag) return;
+      const dx = e.clientX - this._drag.x, dy = e.clientY - this._drag.y;
+      this._drag.x = e.clientX; this._drag.y = e.clientY;
+      this._drag.moved += Math.abs(dx) + Math.abs(dy);
+      this.look.dx += dx * 1.5;
+      this.look.dy += dy * 1.5;
     });
     document.addEventListener('pointerlockchange', () => {
       this.pointerLocked = document.pointerLockElement === this.canvas;
@@ -106,7 +127,7 @@ export class Input {
           if (act === 'fire') this._touchFire = true;
           if (act === 'jump') this.jump = true;
           if (act === 'sprint') this._touchSprint = !this._touchSprint;
-        } else if (t.clientX < innerWidth * 0.45 && this._stick === null) {
+        } else if (t.clientX < innerWidth * 0.45 && t.clientY > innerHeight * 0.42 && this._stick === null) {
           this._stick = t.identifier;
           active.set(t.identifier, 'stick');
           setStick(t);

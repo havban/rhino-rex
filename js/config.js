@@ -39,14 +39,15 @@ export const ATTACK = {
     knockback: 7,
   },
   tail: {
-    damage: 19,
-    range: 9.6,
-    halfAngle: Math.PI * 0.95, // near-360 sweep
-    cooldown: 1.15,
-    windup: 0.22,
-    active: 0.26,
+    damage: 21,
+    range: 10.2,
+    halfAngle: Math.PI,       // the body spins a full turn, so the sweep is 360°
+    cooldown: 1.5,
+    windup: 0.30,             // turn towards the target, then start spinning
+    active: 0.45,             // the spin itself
     knockback: 26,
     stun: 1.1,
+    aimRange: 15,             // look this far for something to turn towards
   },
   fire: {
     dps: 42,              // damage per second inside the cone
@@ -105,9 +106,14 @@ export const CAMERA = {
   minDistance: 15,        // never let scenery shove the camera closer than this
   fov: 62,
   lerp: 7.5,
-  pitchMin: -0.55,
-  pitchMax: 0.85,
+  pitchMin: -0.85,
+  pitchMax: 1.15,
   sensitivity: 0.0026,
+  pitchDefault: 0.12,
+  recenterDelay: 1.8,       // grace period after the player drags the view
+  recenterIdle: 1.0,        // how briskly the camera drifts back when standing still
+  recenterMoving: 4.5,      // ... and when running
+  lateralDeadzone: 0.45,    // strafing must not drag the camera round (feedback spin)
 };
 
 export const COLORS = {

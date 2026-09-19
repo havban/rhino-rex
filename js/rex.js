@@ -3,6 +3,12 @@ import * as THREE from 'three';
 import { REX, ATTACK, WORLD, COLORS } from './config.js';
 import { makeProfile, tubeAlongZ, ellipsoid, capsule, cone, skinMaterial } from './geom.js';
 
+const wrapPi = (a) => {
+  while (a > Math.PI) a -= Math.PI * 2;
+  while (a < -Math.PI) a += Math.PI * 2;
+  return a;
+};
+
 // Bone layout along the body axis (local Z, hips at the origin).
 const FORWARD_BONES = [
   ['spine', 1.00], ['chest', 0.95], ['neck1', 0.85], ['neck2', 0.70], ['headBone', 0.70],
@@ -36,6 +42,7 @@ export class Rex {
     this.phase = 0;
     this.speed = 0;
     this.attack = null;
+    this.attackYaw = 0;       // visual body twist during the tail spin
     this.cooldown = { bite: 0, tail: 0 };
     this.breathing = false;
     this.roar = 0;
@@ -386,7 +393,8 @@ export class Rex {
   }
 
   get forward() {
-    return new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw));
+    const a = this.yaw + this.attackYaw;
+    return new THREE.Vector3(Math.sin(a), 0, Math.cos(a));
   }
 
   damage(amount, fromDir) {
@@ -403,13 +411,40 @@ export class Rex {
 
   heal(n) { this.hp = Math.min(REX.maxHp, this.hp + n); }
 
-  startAttack(type) {
+  startAttack(type, aimYaw = null) {
     if (!this.alive || this.attack) return false;
     if (this.cooldown[type] > 0) return false;
     const cfg = ATTACK[type];
-    this.attack = { type, t: 0, dur: cfg.windup + cfg.active + 0.22, hitDone: false };
+    this.attack = { type, t: 0, dur: cfg.windup + cfg.active + 0.22, hitDone: false, aim: 0, dir: 1 };
+    if (type === 'tail') {
+      // face whatever we are about to hit, then spin that way
+      const aim = aimYaw === null ? 0 : wrapPi(aimYaw - this.yaw);
+      this.attack.aim = aim;
+      this.attack.dir = aim < -0.05 ? -1 : 1;
+    }
     this.cooldown[type] = cfg.cooldown;
     return true;
+  }
+
+  /**
+   * Tail swing: turn onto the target, carry the body through a full circle so
+   * the tail sweeps everything around, then unwind back to where we started.
+   */
+  _spinYaw(a, cfg) {
+    const turnEnd = cfg.windup;
+    const spinEnd = cfg.windup + cfg.active;
+    const full = Math.PI * 2 * a.dir;
+    if (a.t <= turnEnd) {
+      const u = a.t / turnEnd;
+      return a.aim * (1 - Math.pow(1 - u, 3));            // ease out onto the target
+    }
+    if (a.t <= spinEnd) {
+      const u = (a.t - turnEnd) / (spinEnd - turnEnd);
+      const e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+      return a.aim + full * e;                            // the sweep
+    }
+    const u = THREE.MathUtils.clamp((a.t - spinEnd) / (a.dur - spinEnd), 0, 1);
+    return a.aim + full - a.aim * (1 - Math.pow(1 - u, 3)); // settle back to the start
   }
 
   canBreathe() { return this.alive && !this.attack && this.fire > REX.fireMinToStart; }
@@ -461,7 +496,8 @@ export class Rex {
     this.speed = Math.hypot(this.vel.x, this.vel.z);
 
     let desiredYaw = this.yaw;
-    if (breathing || attacking) desiredYaw = camYaw;
+    const spinning = this.attack?.type === 'tail';
+    if (breathing || (attacking && !spinning)) desiredYaw = camYaw;
     else if (wish.lengthSq() > 0.01) desiredYaw = Math.atan2(wish.x, wish.z);
     let d = desiredYaw - this.yaw;
     while (d > Math.PI) d -= Math.PI * 2;
@@ -474,7 +510,10 @@ export class Rex {
       const cfg = ATTACK[a.type];
       a.t += dt;
       if (!a.hitDone && a.t >= cfg.windup) { a.hitDone = true; hitEvent = a.type; }
-      if (a.t >= a.dur) this.attack = null;
+      if (a.type === 'tail') this.attackYaw = this._spinYaw(a, cfg);
+      if (a.t >= a.dur) { this.attack = null; this.attackYaw = 0; }
+    } else if (this.attackYaw !== 0) {
+      this.attackYaw = 0;
     }
 
     if (breathing) {
@@ -493,7 +532,7 @@ export class Rex {
   _animate(dt) {
     const root = this.root, body = this.body;
     root.position.set(this.pos.x, this.y, this.pos.z);
-    root.rotation.y = this.yaw;
+    root.rotation.y = this.yaw + this.attackYaw;
     this.blob.position.y = 0.03 - this.y;
 
     this.phase += dt * (2.2 + Math.min(this.speed / REX.sprintSpeed, 1.4) * 9.5);
@@ -538,12 +577,13 @@ export class Rex {
       let rx = Math.sin(p * 2 - i * 0.5) * 0.035 + (i === 0 ? POSE.tail0 : POSE.tail);
       if (whip) {
         const cfg = ATTACK.tail;
-        const u = THREE.MathUtils.clamp(whip.t / (cfg.windup + cfg.active), 0, 1);
-        const swing = u < 0.35
-          ? THREE.MathUtils.lerp(0, -1.1, u / 0.35)
-          : THREE.MathUtils.lerp(-1.1, 1.5, (u - 0.35) / 0.65);
-        ry += swing * (0.10 + k * 0.22);
-        rx -= 0.05 * k;
+        const wind = THREE.MathUtils.clamp(whip.t / cfg.windup, 0, 1);
+        const spin = THREE.MathUtils.clamp((whip.t - cfg.windup) / cfg.active, 0, 1);
+        // coil the opposite way during the wind-up, then let the spin drag it round
+        const coil = -whip.dir * 0.55 * Math.sin(wind * Math.PI * 0.5) * (1 - spin);
+        const trail = -whip.dir * 1.35 * Math.sin(Math.min(spin, 1) * Math.PI) ** 0.6;
+        ry += (coil + trail) * (0.14 + k * 0.3);
+        rx += 0.06 * (1 - k) * spin;
       }
       t.rotation.y = ry;
       t.rotation.x = rx;
@@ -576,7 +616,7 @@ export class Rex {
       headPitch += 0.1;
     }
     if (this.roar > 0) jawOpen = Math.max(jawOpen, 0.85 * this.roar);
-    if (whip) body.rotation.y += Math.sin(whip.t * 9) * 0.22;
+    if (whip) body.rotation.z += Math.sin(whip.t * 7) * 0.12 * whip.dir;
 
     this.jaw.rotation.x = jawOpen;
     this.neck1.rotation.x = POSE.neck1 + neckPitch * 0.6 - stride * 0.05;

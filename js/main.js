@@ -275,9 +275,37 @@ class Game {
       this._registerHit(r, dealt, type);
       hits++;
     }
-    if (type === 'tail') this.fx.ring(this.rex.pos.clone().setY(0.6), 0xffd98a);
+    if (type === 'tail') {
+      this.fx.ring(this.rex.pos.clone().setY(0.6), 0xffd98a);
+      this.fx.dustBurst(this.rex.pos.clone().setY(0.3), 14, 1.2);
+      this.fx.shake(0.45);
+    }
     if (hits) { this.fx.shake(type === 'tail' ? 0.5 : 0.3); this.audio.crunch(); }
     return hits;
+  }
+
+  // Yaw towards the closest rhino, so a tail swing turns onto a real target.
+  _aimYaw(maxDist) {
+    let best = null, bd = maxDist * maxDist;
+    for (const r of this.livingRhinos()) {
+      const dx = r.pos.x - this.rex.pos.x, dz = r.pos.z - this.rex.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < bd) { bd = d2; best = r; }
+    }
+    return best ? Math.atan2(best.pos.x - this.rex.pos.x, best.pos.z - this.rex.pos.z) : null;
+  }
+
+  // Grit kicked up by the pivoting feet while the body spins.
+  _spinDust(dt) {
+    const a = this.rex.attack;
+    if (!a || a.type !== 'tail') return;
+    const cfg = ATTACK.tail;
+    if (a.t < cfg.windup * 0.5 || a.t > cfg.windup + cfg.active) return;
+    if (Math.random() < dt * 40) {
+      const ang = Math.random() * Math.PI * 2;
+      const r = 1.6 + Math.random() * 2.2;
+      this.fx.dust(new THREE.Vector3(this.rex.pos.x + Math.cos(ang) * r, 0.15, this.rex.pos.z + Math.sin(ang) * r), 0.8);
+    }
   }
 
   fireTick(dt) {
@@ -371,7 +399,7 @@ class Game {
 
     if (this.state !== 'playing') {
       if (this.state === 'menu') this.chase.orbit(dt, this.rex, this.time);
-      else this.chase.update(dt, this.rex, this.world, this.fx.shakeAmount, this.zoom);
+      else this.chase.update(dt, this.rex, this.world, this.fx.shakeAmount, this.zoom, null);
       if (this.state !== 'paused') this.rex.update(dt, IDLE_INPUT, this.chase.yaw, this.world);
       for (const r of this.rhinos) if (!r.dead) r.faceBar(this.camera.quaternion);
       return;
@@ -387,7 +415,10 @@ class Game {
 
     // ---- melee input ----
     if (input.consume('bite') && this.rex.startAttack('bite')) this.audio.bite();
-    if (input.consume('tail') && this.rex.startAttack('tail')) this.audio.tail();
+    if (input.consume('tail') && this.rex.startAttack('tail', this._aimYaw(ATTACK.tail.aimRange))) {
+      this.audio.tail();
+    }
+    this._spinDust(dt);
 
     const hitEvent = this.rex.update(dt, input, this.chase.yaw, this.world);
     if (hitEvent) this.coneHit(hitEvent);
@@ -411,7 +442,7 @@ class Game {
       this.score += 120 * this.wave;
     }
 
-    this.chase.update(dt, this.rex, this.world, this.fx.shakeAmount, this.zoom);
+    this.chase.update(dt, this.rex, this.world, this.fx.shakeAmount, this.zoom, input.move);
     if (!this.rex.alive) this.gameOver();
     this._updateHud();
   }

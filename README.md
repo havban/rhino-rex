@@ -9,11 +9,14 @@ Semburkan api, gigit, dan sabetkan ekor untuk bertahan gelombang demi gelombang.
 
 ## Fitur
 
-- **Sudut pandang orang ketiga** dari belakang T-Rex, kamera mengikuti sedikit dari bahu.
+- **Sudut pandang orang ketiga** dari belakang T-Rex. Kamera mengekor sendiri ke belakang
+  setelah kamu berhenti menggeser layar — makin cepat saat berlari — tapi geseran bebas
+  tetap bisa memutar sudut pandang ke mana pun, termasuk dari depan atau dari atas.
 - **Tiga serangan**
   - 🔥 **Semburan api** — kerucut api jarak jauh, memberi efek terbakar (damage over time).
   - 🦷 **Gigitan** — cepat, kerusakan besar di depan moncong.
-  - 🌀 **Pukulan ekor** — sapuan hampir 360°, melempar dan membuat badak pusing.
+  - 🌀 **Pukulan ekor** — T-Rex otomatis berputar menghadap badak terdekat, memutar badan
+    satu putaran penuh sehingga ekornya menyapu 360°, lalu kembali ke arah semula.
 - **Badak yang menyeruduk** — mereka mengais tanah dulu (aba-aba), lalu menerjang lurus.
   Menepilah; kalau mereka menabrak pohon atau batu mereka pusing dan menerima kerusakan ekstra.
 - **Empat jenis badak**: anakan yang gesit, banteng, badak berbaju zirah, dan **Matriark** raksasa
@@ -32,7 +35,7 @@ Semburkan api, gigit, dan sabetkan ekor untuk bertahan gelombang demi gelombang.
 | Aksi | Tombol |
 | --- | --- |
 | Bergerak | `W A S D` (relatif kamera) |
-| Kamera | Gerakkan mouse (klik kanvas untuk mengunci pointer) |
+| Kamera | Gerakkan mouse (klik kanvas untuk mengunci pointer) atau tahan-seret |
 | Lari | `Shift` |
 | Lompat | `Spasi` |
 | Gigit | Klik kiri / `J` |

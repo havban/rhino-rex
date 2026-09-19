@@ -1,6 +1,12 @@
 // Third-person chase camera that rides behind the rex.
 import * as THREE from 'three';
-import { CAMERA } from './config.js';
+import { CAMERA, REX } from './config.js';
+
+const wrapPi = (a) => {
+  while (a > Math.PI) a -= Math.PI * 2;
+  while (a < -Math.PI) a += Math.PI * 2;
+  return a;
+};
 
 export class ChaseCamera {
   constructor(camera) {
@@ -10,11 +16,13 @@ export class ChaseCamera {
     this.pos = new THREE.Vector3(0, 10, 40);
     this.look = new THREE.Vector3();
     this.dist = CAMERA.distance;
+    this.manual = 0;         // time left before the camera drifts back behind the rex
     this._desired = new THREE.Vector3();
     this._tmp = new THREE.Vector3();
   }
 
   handleLook(dx, dy, invertY = false) {
+    if (dx || dy) this.manual = CAMERA.recenterDelay;
     this.yaw -= dx * CAMERA.sensitivity;
     this.pitch += (invertY ? -dy : dy) * CAMERA.sensitivity;
     this.pitch = THREE.MathUtils.clamp(this.pitch, CAMERA.pitchMin, CAMERA.pitchMax);
@@ -22,7 +30,33 @@ export class ChaseCamera {
     while (this.yaw < -Math.PI) this.yaw += Math.PI * 2;
   }
 
-  update(dt, rex, world, shake = 0, zoom = 1) {
+  /**
+   * Ease the camera back behind the rex once the player stops dragging.
+   *
+   * Movement is camera-relative, so blindly chasing the rex's facing would
+   * spin forever: strafing turns the rex, the camera follows, which rotates
+   * "sideways" again. Only recentre when the player is standing still or
+   * pushing (roughly) forward, where the loop converges instead.
+   */
+  _recenter(dt, rex, move) {
+    this.manual = Math.max(0, this.manual - dt);
+    if (this.manual > 0 || !rex.alive) return;
+    const strafing = move && (Math.abs(move.x) > CAMERA.lateralDeadzone || move.y < -0.2);
+    if (strafing) return;
+
+    const speed = THREE.MathUtils.clamp(rex.speed / REX.walkSpeed, 0, 1);
+    const rate = CAMERA.recenterIdle + (CAMERA.recenterMoving - CAMERA.recenterIdle) * speed;
+    const d = wrapPi(rex.yaw - this.yaw);
+    this.yaw += d * (1 - Math.exp(-rate * dt));
+
+    // while actually running, settle the elevation back to the default too
+    if (speed > 0.35) {
+      this.pitch += (CAMERA.pitchDefault - this.pitch) * (1 - Math.exp(-0.8 * speed * dt));
+    }
+  }
+
+  update(dt, rex, world, shake = 0, zoom = 1, move = null) {
+    this._recenter(dt, rex, move);
     const fwd = new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw));
     const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     const target = this._tmp.set(rex.pos.x, rex.y + CAMERA.lookHeight, rex.pos.z)
