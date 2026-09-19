@@ -1,6 +1,9 @@
 // Enemy rhinos: procedural model, charge-based AI, health bars.
 import * as THREE from 'three';
 import { RHINO, WORLD } from './config.js';
+import { makeProfile, tubeAlongZ, ellipsoid, capsule, cone, skinMaterial } from './geom.js';
+
+const BODY_Y = 1.95;        // height of the torso pivot above the ground
 
 const tmp = new THREE.Vector3();
 const tmp2 = new THREE.Vector3();
@@ -51,119 +54,159 @@ export class Rhino {
     this.root = root;
 
     const body = new THREE.Group();
-    body.position.y = 2.1;
+    body.position.y = BODY_Y;
     root.add(body);
     this.body = body;
 
     const hide = v.color;
-    const dark = new THREE.Color(hide).multiplyScalar(0.78).getHex();
-    const belly = new THREE.Color(hide).lerp(new THREE.Color(0xffffff), 0.28).getHex();
+    const dark = new THREE.Color(hide).multiplyScalar(0.74).getHex();
+    const bellyHex = new THREE.Color(hide).lerp(new THREE.Color(0xffffff), 0.3).getHex();
+    const mats = this.mats = {
+      hide: skinMaterial(hide, { shininess: 10 }),
+      dark: skinMaterial(dark, { shininess: 8 }),
+      horn: skinMaterial(0xf3e7d0, { shininess: 36 }),
+      hoof: skinMaterial(0x4d433a, { shininess: 6 }),
+      eye: new THREE.MeshPhongMaterial({ color: 0x1d1510, shininess: 60 }),
+      body: skinMaterial(0xffffff, { vertexColors: true, shininess: 10 }),
+    };
 
-    const torso = box(2.4, 2.1, 4.0, hide);
+    // ---- barrel torso ----------------------------------------------------
+    const radius = makeProfile([
+      { z: -2.9, v: 0.12 }, { z: -2.6, v: 0.58 }, { z: -2.1, v: 0.92 },
+      { z: -1.2, v: 1.14 }, { z: -0.3, v: 1.22 }, { z: 0.55, v: 1.24 },
+      { z: 1.3, v: 1.16 }, { z: 2.0, v: 0.96 }, { z: 2.5, v: 0.74 },
+    ]);
+    const centerY = makeProfile([
+      { z: -2.9, v: 0.3 }, { z: -1.4, v: 0.05 }, { z: 0.2, v: 0 },
+      { z: 1.0, v: 0.12 }, { z: 1.8, v: 0.05 }, { z: 2.5, v: -0.12 },
+    ]);
+    const cHide = new THREE.Color(hide);
+    const cBelly = new THREE.Color(bellyHex);
+    const torso = new THREE.Mesh(tubeAlongZ({
+      zStart: -2.9, zEnd: 2.5, rings: 56, radial: 20,
+      radius, center: centerY,
+      squash: (z) => ({ x: 0.86, y: z > 0.4 ? 1.06 : 1.0 }),
+      color: (z, a, out) => {
+        out.copy(cHide);
+        out.lerp(cBelly, THREE.MathUtils.smoothstep(-Math.sin(a), 0.3, 0.9));
+      },
+    }), mats.body);
+    torso.castShadow = true;
+    torso.receiveShadow = true;
     body.add(torso);
-    const rump = box(2.5, 2.2, 1.4, hide);
-    rump.position.set(0, 0.1, -1.9);
-    body.add(rump);
-    const bellyM = box(2.0, 0.8, 3.6, belly);
-    bellyM.position.y = -1.0;
-    body.add(bellyM);
 
-    // armour plates on the tougher variants
+    // armour bands on the tougher hides
     if (this.armor > 0) {
       for (let i = 0; i < 3; i++) {
-        const plate = box(2.62, 0.8, 0.9, dark);
-        plate.position.set(0, 0.55, 1.2 - i * 1.3);
-        body.add(plate);
+        const z = 0.9 - i * 0.95;
+        const band = new THREE.Mesh(new THREE.TorusGeometry(radius(z) * 0.99, 0.13, 10, 28), mats.dark);
+        band.rotation.y = Math.PI / 2;
+        band.rotation.x = Math.PI / 2;
+        band.position.set(0, centerY(z), z);
+        band.scale.set(1, 1, 0.94);
+        band.castShadow = true;
+        body.add(band);
       }
     }
     if (v.boss) {
       for (const sx of [-1, 1]) {
-        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.28, 1.1, 5), mat(0x54452f, { flatShading: true }));
-        spike.position.set(sx * 0.8, 1.4, -0.4);
+        const spike = cone(0.24, 1.05, mats.horn, 10);
+        spike.position.set(sx * 0.7, centerY(0.2) + radius(0.2) * 0.86, 0.2);
+        spike.rotation.z = sx * 0.3;
         body.add(spike);
       }
     }
 
-    // ---- head -----------------------------------------------------------
+    // ---- head -------------------------------------------------------------
     const neck = new THREE.Group();
-    neck.position.set(0, 0.1, 2.0);
+    neck.position.set(0, 0.2, 1.85);
     body.add(neck);
     this.neck = neck;
     const head = new THREE.Group();
-    head.position.set(0, -0.15, 1.1);
+    head.scale.setScalar(1.18);
+    head.position.set(0, -0.52, 0.72);
     neck.add(head);
     this.head = head;
 
-    const skull = box(1.7, 1.5, 2.0, hide);
-    skull.position.set(0, 0, 0.4);
+    const skull = ellipsoid(0.82, 0.78, 0.92, mats.hide, 20);
+    skull.position.set(0, 0.08, 0.05);
     head.add(skull);
-    const snout = box(1.25, 1.05, 1.1, hide);
-    snout.position.set(0, -0.15, 1.6);
+    const jowl = ellipsoid(0.74, 0.62, 0.55, mats.hide, 18);
+    jowl.position.set(0, -0.16, 0.75);
+    head.add(jowl);
+    const snout = ellipsoid(0.6, 0.52, 0.66, mats.hide, 18);
+    snout.position.set(0, -0.22, 1.42);
     head.add(snout);
-    const lip = box(1.3, 0.3, 0.5, belly);
-    lip.position.set(0, -0.62, 1.9);
+    const lip = ellipsoid(0.44, 0.24, 0.26, mats.dark, 14);
+    lip.position.set(0, -0.54, 1.78);
     head.add(lip);
 
-    const hornMat = mat(0xf2e6cf, { flatShading: true });
-    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.42, 2.1 * (v.boss ? 1.5 : 1), 7), hornMat);
-    horn.position.set(0, 0.55, 2.05);
-    horn.rotation.x = 0.5;
-    horn.castShadow = true;
+    const horn = cone(0.34, 1.65 * (v.boss ? 1.45 : 1), mats.horn, 14);
+    horn.position.set(0, 0.36, 1.62);
+    horn.rotation.x = 0.55;
     head.add(horn);
     this.horn = horn;
-    const horn2 = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.85, 6), hornMat);
-    horn2.position.set(0, 0.72, 1.25);
+    const horn2 = cone(0.21, 0.62, mats.horn, 12);
+    horn2.position.set(0, 0.62, 0.78);
     horn2.rotation.x = 0.3;
     head.add(horn2);
 
     for (const sx of [-1, 1]) {
-      const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.26, 0.6, 6), mat(dark));
-      ear.position.set(sx * 0.62, 0.86, -0.25);
-      ear.rotation.z = sx * 0.3;
+      const ear = ellipsoid(0.1, 0.24, 0.16, mats.dark, 12);
+      ear.position.set(sx * 0.5, 0.74, -0.32);
+      ear.rotation.z = sx * 0.35;
       head.add(ear);
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), new THREE.MeshBasicMaterial({ color: 0x241a12 }));
-      eye.position.set(sx * 0.82, 0.22, 0.95);
+      const eye = ellipsoid(0.13, 0.13, 0.13, mats.eye, 12);
+      eye.position.set(sx * 0.72, 0.2, 0.55);
       head.add(eye);
-      this[`eye${sx > 0 ? 'R' : 'L'}`] = eye;
+      const nostril = ellipsoid(0.07, 0.06, 0.06, mats.eye, 10);
+      nostril.position.set(sx * 0.19, -0.2, 2.0);
+      head.add(nostril);
     }
 
-    // ---- legs ------------------------------------------------------------
+    // ---- legs ---------------------------------------------------------------
     this.legs = [];
-    const legPos = [[-0.9, 1.35], [0.9, 1.35], [-0.95, -1.5], [0.95, -1.5]];
+    const legPos = [[-0.8, 1.25], [0.8, 1.25], [-0.86, -1.35], [0.86, -1.35]];
     legPos.forEach(([x, z], i) => {
       const hip = new THREE.Group();
-      hip.position.set(x, -0.9, z);
+      hip.position.set(x, -0.62, z);
       body.add(hip);
-      const upper = box(0.75, 1.2, 0.85, hide);
-      upper.position.y = -0.55;
+      const shoulder = ellipsoid(0.48, 0.54, 0.56, mats.hide, 14);
+      shoulder.position.y = -0.08;
+      hip.add(shoulder);
+      const upper = capsule(0.38, 0.32, mats.hide, 12);
+      upper.position.y = -0.44;
       hip.add(upper);
+
       const knee = new THREE.Group();
-      knee.position.y = -1.05;
+      knee.position.y = -0.78;
       hip.add(knee);
-      const lower = box(0.62, 0.9, 0.7, dark);
-      lower.position.y = -0.4;
+      const lower = capsule(0.33, 0.3, mats.hide, 12);
+      lower.position.y = -0.28;
       knee.add(lower);
-      const hoof = box(0.72, 0.35, 0.8, 0x50463c);
-      hoof.position.y = -0.95;
+      const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.37, 0.34, 0.26, 16), mats.hoof);
+      hoof.position.y = -0.62;
+      hoof.castShadow = true;
       knee.add(hoof);
       this.legs.push({ hip, knee, i, front: z > 0 });
     });
 
-    // ---- tail ------------------------------------------------------------
+    // ---- tail ----------------------------------------------------------------
     const tail = new THREE.Group();
-    tail.position.set(0, 0.5, -2.5);
+    tail.position.set(0, 0.55, -2.65);
     body.add(tail);
-    const tailM = box(0.28, 0.28, 1.4, dark);
+    const tailM = capsule(0.11, 1.0, mats.dark, 10);
+    tailM.rotation.x = Math.PI / 2;
     tailM.position.z = -0.6;
     tail.add(tailM);
-    const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.25, 6, 5), mat(0x3d332a));
-    tuft.position.z = -1.35;
+    const tuft = ellipsoid(0.2, 0.2, 0.26, mats.dark, 12);
+    tuft.position.z = -1.25;
     tail.add(tuft);
     this.tail = tail;
 
-    // ---- health bar -------------------------------------------------------
+    // ---- health bar -----------------------------------------------------------
     const bar = new THREE.Group();
-    bar.position.y = 5.0 * (this.cfg.boss ? 1.25 : 1);
+    bar.position.y = 4.4 * (this.cfg.boss ? 1.2 : 1);
     root.add(bar);
     const bg = new THREE.Mesh(
       new THREE.PlaneGeometry(3.0, 0.36),
@@ -182,14 +225,12 @@ export class Rhino {
     this.barFill = fill;
     this.barBg = bg;
 
-    // dust puff anchor at the front hooves
     this.frontAnchor = new THREE.Object3D();
-    this.frontAnchor.position.set(0, -1.9, 2.2);
+    this.frontAnchor.position.set(0, -1.55, 2.1);
     body.add(this.frontAnchor);
 
-    // blob shadow
     const blob = new THREE.Mesh(
-      new THREE.CircleGeometry(2.4, 20),
+      new THREE.CircleGeometry(2.3, 22),
       new THREE.MeshBasicMaterial({ color: 0x2c4a1e, transparent: true, opacity: 0.2, depthWrite: false })
     );
     blob.rotation.x = -Math.PI / 2;
@@ -397,16 +438,12 @@ export class Rhino {
     this.dying += dt;
     const u = Math.min(this.dying / 1.1, 1);
     this.body.rotation.z = u * 1.5;
-    this.body.position.y = 2.1 - u * 1.1;
+    this.body.position.y = BODY_Y - u * 1.0;
     this.root.scale.setScalar(this.scaleF * (1 - u * 0.12));
     this.bar.visible = false;
     if (u >= 1) {
-      this.root.traverse((o) => {
-        if (o.isMesh) {
-          o.material.transparent = true;
-          o.material.opacity = Math.max(0, 1 - (this.dying - 1.1) * 1.6);
-        }
-      });
+      const a = Math.max(0, 1 - (this.dying - 1.1) * 1.6);
+      for (const k in this.mats) { this.mats[k].transparent = true; this.mats[k].opacity = a; }
       if (this.dying > 1.8) this.dispose();
     }
   }
@@ -422,8 +459,8 @@ export class Rhino {
 
     for (const leg of this.legs) {
       const off = (leg.i % 2 ? 0 : Math.PI) + (leg.front ? 0.5 : 0);
-      leg.hip.rotation.x = Math.sin(p + off) * 0.6 * stride;
-      leg.knee.rotation.x = Math.max(0, Math.sin(p + off + 1.0)) * 0.7 * stride;
+      leg.hip.rotation.x = Math.sin(p + off) * 0.55 * stride;
+      leg.knee.rotation.x = Math.max(0, Math.sin(p + off + 1.0)) * 0.6 * stride;
     }
 
     let bodyPitch = -stride * 0.05;
@@ -444,7 +481,7 @@ export class Rhino {
     }
     if (this.state !== 'stun') this.body.rotation.z = Math.sin(p * 0.5) * 0.05 * stride;
     this.body.rotation.x = bodyPitch + Math.sin(p) * 0.02 * stride;
-    this.body.position.y = 2.1 + Math.abs(Math.sin(p)) * 0.08 * stride;
+    this.body.position.y = BODY_Y + Math.abs(Math.sin(p)) * 0.07 * stride;
     this.neck.rotation.x = headPitch;
     this.tail.rotation.y = Math.sin(this.phase * 5) * 0.4;
     this.tail.rotation.x = -0.3 + Math.sin(this.phase * 3) * 0.1;
@@ -456,19 +493,13 @@ export class Rhino {
     this.barFill.material.color.setHSL(0.33 * frac, 0.75, 0.52);
     this.bar.visible = frac < 0.999 || this.cfg.boss === true;
 
-    // hit flash
+    // hit flash / burning glow
     const f = this.flash;
-    if (f > 0 || this._wasFlash) {
-      this.root.traverse((o) => {
-        if (o.isMesh && o.material?.emissive) {
-          if (this.burn > 0) o.material.emissive.setRGB(0.16 + f * 0.3, 0.07 + f * 0.13, 0);
-          else o.material.emissive.setRGB(f * 0.7, f * 0.3, 0);
-        }
-      });
+    if (f > 0 || this.burn > 0 || this._wasFlash) {
+      const r = this.burn > 0 ? 0.16 + f * 0.3 : f * 0.7;
+      const g = this.burn > 0 ? 0.07 + f * 0.13 : f * 0.3;
+      for (const k in this.mats) this.mats[k].emissive?.setRGB(r, g, 0);
       this._wasFlash = f > 0 || this.burn > 0;
-    } else if (this.burn > 0) {
-      this.root.traverse((o) => { if (o.isMesh && o.material?.emissive) o.material.emissive.setRGB(0.16, 0.07, 0); });
-      this._wasFlash = true;
     }
   }
 
@@ -483,9 +514,8 @@ export class Rhino {
   dispose() {
     this.dead = true;
     this.scene.remove(this.root);
-    this.root.traverse((o) => {
-      if (o.isMesh) { o.geometry.dispose(); o.material.dispose?.(); }
-    });
+    this.root.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
+    for (const k in this.mats) this.mats[k].dispose?.();
   }
 }
 

@@ -41,8 +41,12 @@ tombol bulat di kanan untuk menyerang.
 ## Teknis
 
 - [Three.js](https://threejs.org) r160, di-*vendor* ke `vendor/three.module.js` (tanpa CDN, tanpa build step).
-- Semua model dibuat prosedural dari primitif (box, cone, sphere) dan dianimasikan dengan tangan
-  — tidak ada aset 3D eksternal.
+- Semua model dibuat prosedural — tidak ada aset 3D eksternal. Tubuh T-Rex dan badak adalah
+  permukaan halus yang disapu sepanjang tulang punggung (penampang elips dengan profil jari-jari
+  Catmull-Rom), bukan tumpukan kotak. T-Rex memakai `SkinnedMesh` dengan rangka tulang, sehingga
+  leher dan ekor melengkung mulus saat berlari dan menyabet.
+- Kepala, kaki, dan tanduk dibentuk dari elipsoid dan kapsul ber-*smooth shading* dengan bahan
+  Phong, jadi siluetnya membulat, bukan bersudut.
 - Efek api/debu memakai satu sistem partikel `THREE.Points` dengan shader kustom.
 - Suara disintesis lewat Web Audio API (tanpa file audio).
 - Situs statis murni: cukup buka `index.html` lewat web server apa pun.
@@ -66,6 +70,7 @@ js/main.js          # loop utama, gelombang, resolusi serangan
 js/rex.js           # model + animasi + gerak T-Rex
 js/rhino.js         # model + AI badak (kejar → aba-aba → seruduk → pusing)
 js/world.js         # arena, langit, pohon, batu, rumput
+js/geom.js          # pembangun permukaan halus (sapuan tabung, elipsoid, kapsul)
 js/fx.js            # partikel, angka kerusakan, guncangan kamera
 js/camera.js        # kamera orang ketiga
 js/input.js         # keyboard/mouse/sentuh

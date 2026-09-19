@@ -97,10 +97,10 @@ export const WAVES = {
 };
 
 export const CAMERA = {
-  distance: 23,
-  height: 10.4,
-  lookHeight: 3.1,
-  lookAhead: 6.0,         // aim the camera a little in front of the rex
+  distance: 20,
+  height: 9.2,
+  lookHeight: 3.4,
+  lookAhead: 5.5,         // aim the camera a little in front of the rex
   shoulder: 3.2,          // slight over-the-shoulder offset so the tail does not block the view
   minDistance: 15,        // never let scenery shove the camera closer than this
   fov: 62,

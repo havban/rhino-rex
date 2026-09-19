@@ -122,8 +122,9 @@ export class World {
 
   _scatterGrass() {
     const count = this.quality === 'low' ? 900 : this.quality === 'medium' ? 2200 : 4200;
-    const blade = new THREE.ConeGeometry(0.22, 0.95, 4, 1, true);
-    blade.translate(0, 0.475, 0);
+    const blade = new THREE.ConeGeometry(0.2, 0.85, 6, 1, true);
+    blade.translate(0, 0.425, 0);
+    blade.computeVertexNormals();
     const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide });
     const mesh = new THREE.InstancedMesh(blade, mat, count);
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
@@ -150,7 +151,7 @@ export class World {
 
     // bright flowers for the cheerful look
     const fcount = this.quality === 'low' ? 140 : 420;
-    const fgeo = new THREE.SphereGeometry(0.34, 6, 5);
+    const fgeo = new THREE.SphereGeometry(0.32, 9, 7);
     const fmesh = new THREE.InstancedMesh(fgeo, new THREE.MeshLambertMaterial({ color: 0xffffff }), fcount);
     const petal = [0xff6f91, 0xffd93d, 0xff9f68, 0xf5f7ff, 0xc77dff];
     for (let i = 0; i < fcount; i++) {
@@ -170,7 +171,7 @@ export class World {
     const g = new THREE.Group();
     const trunkH = 5 * scale;
     const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.45 * scale, 0.8 * scale, trunkH, 7),
+      new THREE.CylinderGeometry(0.45 * scale, 0.8 * scale, trunkH, 12),
       new THREE.MeshLambertMaterial({ color: 0xa9703f })
     );
     trunk.position.y = trunkH / 2;
@@ -180,7 +181,7 @@ export class World {
     for (let i = 0; i < 3; i++) {
       const r = (2.6 - i * 0.45) * scale;
       const leaf = new THREE.Mesh(
-        new THREE.IcosahedronGeometry(r, 0),
+        new THREE.IcosahedronGeometry(r, 1),
         new THREE.MeshLambertMaterial({ color: greens[i % greens.length], flatShading: true })
       );
       leaf.position.set((Math.random() - 0.5) * scale, trunkH + i * 1.5 * scale - 0.4, (Math.random() - 0.5) * scale);
@@ -196,7 +197,7 @@ export class World {
 
   _rock(x, z, scale) {
     const rock = new THREE.Mesh(
-      new THREE.DodecahedronGeometry(scale, 0),
+      new THREE.DodecahedronGeometry(scale, 1),
       new THREE.MeshLambertMaterial({ color: 0xb9b0a2, flatShading: true })
     );
     rock.position.set(x, scale * 0.55, z);
@@ -251,7 +252,7 @@ export class World {
       const puffs = 3 + ((Math.random() * 3) | 0);
       for (let p = 0; p < puffs; p++) {
         const r = 6 + Math.random() * 7;
-        const puff = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), mat);
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), mat);
         puff.position.set((p - puffs / 2) * r * 0.9, Math.random() * r * 0.35, Math.random() * r * 0.4);
         puff.scale.y = 0.62;
         c.add(puff);
@@ -273,7 +274,7 @@ export class World {
       const r = 250 + Math.random() * 80;
       const h = 28 + Math.random() * 55;
       const hill = new THREE.Mesh(
-        new THREE.ConeGeometry(38 + Math.random() * 40, h, 7),
+        new THREE.ConeGeometry(38 + Math.random() * 40, h, 12),
         new THREE.MeshLambertMaterial({ color: new THREE.Color().setHSL(0.28, 0.35, 0.52 + Math.random() * 0.12), flatShading: true })
       );
       hill.position.set(Math.cos(a) * r, h / 2 - 6, Math.sin(a) * r);
@@ -287,7 +288,7 @@ export class World {
     // Low wooden posts marking the arena edge — a visual cue, not a hard wall.
     const group = new THREE.Group();
     const mat = new THREE.MeshLambertMaterial({ color: 0xd9a86c });
-    const geo = new THREE.CylinderGeometry(0.28, 0.32, 3.2, 6);
+    const geo = new THREE.CylinderGeometry(0.28, 0.32, 3.2, 10);
     const n = 88;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2;

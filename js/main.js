@@ -127,8 +127,7 @@ class Game {
     this.rex.vel.set(0, 0, 0);
     this.rex.y = 0; this.rex.vy = 0;
     this.rex.yaw = Math.PI;
-    this.rex.body.rotation.set(0, 0, 0);
-    this.rex.body.position.y = 2.55;
+    this.rex.resetPose();
     this.rex.attack = null;
     this.rex.combo = 0;
     this.chase.yaw = Math.PI;
@@ -293,12 +292,12 @@ class Game {
   _dropPickup(pos) {
     const g = new THREE.Group();
     const melon = new THREE.Mesh(
-      new THREE.SphereGeometry(0.9, 14, 12),
+      new THREE.SphereGeometry(0.9, 22, 16),
       new THREE.MeshLambertMaterial({ color: 0x5ec84f, emissive: 0x1d4a18, emissiveIntensity: 0.4 })
     );
     g.add(melon);
     for (let i = 0; i < 4; i++) {
-      const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.06, 6, 20, Math.PI), new THREE.MeshLambertMaterial({ color: 0x2e7a26 }));
+      const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.06, 10, 28, Math.PI), new THREE.MeshLambertMaterial({ color: 0x2e7a26 }));
       stripe.rotation.y = (i / 4) * Math.PI;
       stripe.rotation.x = Math.PI / 2;
       g.add(stripe);
