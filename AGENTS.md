@@ -38,6 +38,12 @@ brokers the multiplayer handshake, but the game works fully without it.
 5. **Comments explain *why*.** The code is readable enough to say what it does.
    Comment the reasoning, the constraint, or the bug being avoided.
 
+## Licence
+
+GPL-3.0 (see `LICENSE`). Contributions are taken under the same licence. The
+vendored Three.js stays MIT with its header intact — keep it, and keep
+`THIRD-PARTY.md` current if anything else ever gets vendored.
+
 ## Layout
 
 ```

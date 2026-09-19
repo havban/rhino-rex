@@ -1,0 +1,44 @@
+# Third-party licences
+
+Rhino Rex itself is licensed under the **GNU General Public License v3.0** —
+see [LICENSE](LICENSE). The components below keep their own licences, which
+are compatible with the GPL.
+
+## Three.js — MIT
+
+`vendor/three.module.js` is an unmodified copy of Three.js r160. Its licence
+header is preserved at the top of that file.
+
+```
+Copyright 2010-2023 Three.js Authors
+SPDX-License-Identifier: MIT
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## Wrangler — build tooling only
+
+`worker/` lists `wrangler` as a dev dependency (Apache-2.0 / MIT). It is used
+to deploy the Worker and is never shipped to players; `worker/node_modules` is
+not part of this repository.
+
+## Everything else
+
+Models, textures, sound effects, music and all other assets are generated in
+code at runtime. There are no third-party media files in this project.

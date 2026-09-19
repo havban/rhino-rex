@@ -247,6 +247,8 @@ button:active { transform: translateY(2px) scale(.99); }
 .ghost.danger { color: #a33; border-color: #ffcfcf; background: rgba(255, 245, 245, .9); }
 .ghost select { font-family: inherit; font-weight: 700; border: none; background: #fff6e3; border-radius: 8px; padding: 4px 6px; color: var(--ink); }
 .best { margin: 16px 0 0; color: var(--ink-soft); font-size: 14px; }
+.legal { margin: 10px 0 0; font-size: 11px; line-height: 1.5; color: var(--ink-soft); opacity: .85; }
+.legal a { color: var(--sun-deep); }
 
 /* ---- leaderboard ---- */
 .hint.center { text-align: center; }

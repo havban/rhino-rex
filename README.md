@@ -221,4 +221,15 @@ dan daftar jebakan yang sudah pernah memakan waktu.
 
 ## Lisensi
 
-MIT
+**GNU General Public License v3.0** — lihat [LICENSE](LICENSE).
+
+Rhino Rex adalah perangkat lunak bebas: kamu boleh memakai, mempelajari,
+mengubah, dan membagikannya, dengan syarat karya turunannya juga dibagikan di
+bawah lisensi yang sama beserta kode sumbernya. Tidak ada jaminan apa pun.
+
+Three.js (di `vendor/`) tetap memakai lisensi MIT-nya sendiri, yang kompatibel
+dengan GPL — rinciannya di [THIRD-PARTY.md](THIRD-PARTY.md).
+
+Catatan: rilis sebelum commit ini terbit di bawah MIT. Salinan yang sudah
+terlanjur diambil orang dengan lisensi itu tetap MIT; perubahan ini berlaku
+untuk versi sejak sekarang.
