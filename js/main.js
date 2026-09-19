@@ -1,6 +1,6 @@
 // Rhino Rex — game bootstrap, loop, waves and combat resolution.
 import * as THREE from 'three';
-import { REX, ATTACK, WAVES, WORLD, CAMERA, RHINO, FIREBALL, BLOOD } from './config.js';
+import { REX, ATTACK, WAVES, WORLD, CAMERA, RHINO, FIREBALL, IMPACT, SCENERY } from './config.js';
 import { World } from './world.js';
 import { Rex } from './rex.js';
 import { Rhino, spawnRing } from './rhino.js';
@@ -28,7 +28,6 @@ class Game {
     this.quality = localStorage.getItem('rr.quality') || (matchMedia('(max-width: 900px)').matches ? 'medium' : 'high');
     this.soundOn = localStorage.getItem('rr.sound') !== 'off';
     this.musicStyle = localStorage.getItem('rr.music') || 'ceria';
-    this.goreOn = localStorage.getItem('rr.gore') !== 'off';
 
     this.coarse = matchMedia('(pointer: coarse)').matches;
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: this.quality !== 'low', powerPreference: 'high-performance' });
@@ -53,7 +52,6 @@ class Game {
     this.audio = new Audio();
     this.audio.setEnabled(this.soundOn);
     this.music = null;          // built lazily: needs an AudioContext
-    this.fx.gore = this.goreOn;
     this.input = new Input(this.canvas);
     this.input.onModeChange = (touch) => {
       $('touch').classList.toggle('on', touch);
@@ -134,17 +132,6 @@ class Game {
       localStorage.setItem('rr.sound', this.soundOn ? 'on' : 'off');
       if (this.soundOn) this._startMusic();
       paintSound();
-    });
-
-    const gore = $('btn-gore');
-    const paintGore = () => { gore.textContent = this.goreOn ? '🩸 Darah: ON' : '🩸 Darah: OFF'; };
-    paintGore();
-    gore.addEventListener('click', () => {
-      this.goreOn = !this.goreOn;
-      this.fx.gore = this.goreOn;
-      if (!this.goreOn) this.fx.splats.clear();
-      localStorage.setItem('rr.gore', this.goreOn ? 'on' : 'off');
-      paintGore();
     });
 
     $('btn-coop').addEventListener('click', () => this.showLobby());
@@ -441,7 +428,6 @@ class Game {
     this.pickups.length = 0;
     for (const ball of this.balls) ball.dispose();
     this.balls.length = 0;
-    this.fx.splats.clear();
     this.rex.cooldown.fireball = 0;
 
     this.rex.hp = REX.maxHp;
@@ -644,6 +630,11 @@ class Game {
       hits++;
     }
     if (type === 'tail') {
+      for (const o of this.world.obstacles) {
+        if (!o.alive || o.hp === undefined) continue;
+        const d = Math.hypot(o.pos.x - this.rex.pos.x, o.pos.z - this.rex.pos.z) - o.radius;
+        if (d < cfg.range) this.world.damage(o, SCENERY.tailDamage, 'smash', this.fx);
+      }
       this.fx.ring(this.rex.pos.clone().setY(0.6), 0xffd98a);
       this.fx.dustBurst(this.rex.pos.clone().setY(0.3), 14, 1.2);
       this.fx.shake(0.45);
@@ -716,6 +707,13 @@ class Game {
   _explode(pos, direct) {
     this.fx.blast(pos);
     this.mp?.broadcastFx('blast', pos);
+    for (const o of this.world.obstacles) {
+      if (!o.alive || o.hp === undefined) continue;
+      const d = Math.hypot(o.pos.x - pos.x, o.pos.z - pos.z) - o.radius;
+      if (d > FIREBALL.splash) continue;
+      const falloff = 1 - Math.max(0, d) / FIREBALL.splash;
+      this.world.damage(o, SCENERY.blastDamage * falloff, 'fire', this.fx);
+    }
     this.fx.shake(1.1);
     this.audio.stomp();
     this.audio.crunch();
@@ -731,7 +729,7 @@ class Game {
         burn: FIREBALL.burn, stun: 0.5 + falloff * 0.6,
       });
       this.fx.number(r.pos.clone().setY(4.4 * r.scaleF), Math.round(dealt), 'burn');
-      this.fx.blood(r.pos.clone().setY(2.0 * r.scaleF), knock, BLOOD.dropsPerHit, 1.2);
+      this.fx.thwack(r.pos.clone().setY(2.0 * r.scaleF), knock, IMPACT.sparksPerHit, 1.2);
       if (!r.alive) this._onKill(r, 'fireball');
     }
   }
@@ -762,6 +760,16 @@ class Game {
     const flat = this.rex.pos.clone().setY(0);
     const fwd = this.rex.forward;
     const cosHalf = Math.cos(cfg.halfAngle);
+
+    for (const o of this.world.obstacles) {
+      if (!o.alive || o.hp === undefined) continue;
+      const to = new THREE.Vector3(o.pos.x - flat.x, 0, o.pos.z - flat.z);
+      const d = to.length() - o.radius;
+      if (d > cfg.range) continue;
+      to.normalize();
+      if (d > 0.5 && fwd.dot(to) < cosHalf) continue;
+      this.world.damage(o, SCENERY.fireDps * dt, 'fire', Math.random() < dt * 4 ? this.fx : null);
+    }
     for (const r of this.livingRhinos()) {
       const to = r.pos.clone().setY(0).sub(flat);
       const d = to.length() - r.radius;
@@ -772,7 +780,6 @@ class Game {
       this._fireAccum = (this._fireAccum || 0) + dealt;
       if (this.run) this.run.weapons.fire += dealt / 40;   // scaled so it compares with melee hits
       r._fireTally = (r._fireTally || 0) + dealt;
-      if (Math.random() < dt * 3) this.fx.blood(r.pos.clone().setY(1.8 * r.scaleF), null, 2, 0.6);
       if (r._fireTally > 22) { this.fx.number(r.pos.clone().setY(4.4 * r.scaleF), Math.round(r._fireTally), 'burn'); r._fireTally = 0; }
       if (!r.alive) this._onKill(r, 'fire');
     }
@@ -782,7 +789,7 @@ class Game {
     const cls = type === 'bite' ? 'bite' : type === 'tail' ? 'tail' : '';
     this.fx.number(r.pos.clone().setY(4.4 * r.scaleF), Math.round(dealt), cls);
     this.fx.impact(r.pos.clone().setY(2.4 * r.scaleF), type === 'bite' ? 0xff88a0 : 0xffe08a, type === 'bite' ? 16 : 10);
-    this.fx.blood(r.pos.clone().setY(2.2 * r.scaleF), dir, type === 'bite' ? BLOOD.dropsPerHit + 3 : BLOOD.dropsPerHit, type === 'bite' ? 1.15 : 0.9);
+    this.fx.thwack(r.pos.clone().setY(2.2 * r.scaleF), dir, type === 'bite' ? IMPACT.sparksPerHit + 3 : IMPACT.sparksPerHit, type === 'bite' ? 1.15 : 0.9);
     if (!r.alive) this._onKill(r, type);
   }
 
@@ -795,7 +802,7 @@ class Game {
     const mult = 1 + Math.min(this.rex.combo - 1, 9) * 0.1;
     this.score += Math.round(r.cfg.score * mult);
     this.fx.impact(r.pos.clone().setY(2.2 * r.scaleF), 0xffc247, 26);
-    this.fx.blood(r.pos.clone().setY(2.2 * r.scaleF), null, Math.round(BLOOD.dropsPerKill * r.scaleF), 1.3);
+    this.fx.thwack(r.pos.clone().setY(2.2 * r.scaleF), null, Math.round(IMPACT.sparksPerKill * r.scaleF), 1.3);
     this.fx.dustBurst(r.pos.clone().setY(0.4), 12, r.scaleF);
     this.fx.number(r.pos.clone().setY(5.2 * r.scaleF), `+${Math.round(r.cfg.score * mult)}`, 'score');
     this.fx.shake(r.cfg.boss ? 1.4 : 0.35);
@@ -833,7 +840,7 @@ class Game {
   // -------------------------------------------------------------- loop ----
   _update(dt) {
     this.time += dt;
-    this.world.update(dt);
+    this.world.update(dt, this.fx);
     this.world.followSun(this.rex.pos);
     this._musicTimer = (this._musicTimer || 0) - dt;
     if (this.music?.playing && this._musicTimer <= 0) {

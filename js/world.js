@@ -1,6 +1,6 @@
 // The sunny arena: sky dome, grass, trees, boulders, clouds and distant hills.
 import * as THREE from 'three';
-import { WORLD, COLORS } from './config.js';
+import { WORLD, COLORS, SCENERY } from './config.js';
 
 const SKY_VERT = `
 varying vec3 vWorld;
@@ -167,17 +167,19 @@ export class World {
     this.scene.add(fmesh);
   }
 
-  _tree(x, z, scale) {
+  _tree(x, z, scale, destructible = true) {
     const g = new THREE.Group();
     const trunkH = 5 * scale;
+    const bark = new THREE.MeshLambertMaterial({ color: 0xa9703f });
     const trunk = new THREE.Mesh(
       new THREE.CylinderGeometry(0.45 * scale, 0.8 * scale, trunkH, 12),
-      new THREE.MeshLambertMaterial({ color: 0xa9703f })
+      bark
     );
     trunk.position.y = trunkH / 2;
     trunk.castShadow = true; trunk.receiveShadow = true;
     g.add(trunk);
     const greens = [0x62c94a, 0x7fd65c, 0x4fb53d];
+    const leaves = [];
     for (let i = 0; i < 3; i++) {
       const r = (2.6 - i * 0.45) * scale;
       const leaf = new THREE.Mesh(
@@ -187,11 +189,30 @@ export class World {
       leaf.position.set((Math.random() - 0.5) * scale, trunkH + i * 1.5 * scale - 0.4, (Math.random() - 0.5) * scale);
       leaf.castShadow = true;
       g.add(leaf);
+      leaves.push(leaf);
     }
     g.position.set(x, 0, z);
     g.rotation.y = Math.random() * Math.PI;
     this.scene.add(g);
-    this.obstacles.push({ pos: new THREE.Vector3(x, 0, z), radius: 1.5 * scale, solid: true, kind: 'tree', mesh: g });
+
+    if (!destructible) return g;
+
+    // the charred stump that stays behind, hidden until the tree comes down
+    const stump = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.6 * scale, 0.85 * scale, 0.9 * scale, 10),
+      new THREE.MeshLambertMaterial({ color: 0x4a3a2c, flatShading: true })
+    );
+    stump.position.set(x, 0.45 * scale, z);
+    stump.castShadow = true;
+    stump.visible = false;
+    this.scene.add(stump);
+
+    this.obstacles.push({
+      pos: new THREE.Vector3(x, 0, z), radius: 1.5 * scale, solid: true, kind: 'tree',
+      mesh: g, stump, bark, leaves, scale,
+      hp: SCENERY.treeHp * scale, maxHp: SCENERY.treeHp * scale,
+      alive: true, burn: 0, phase: 0,
+    });
     return g;
   }
 
@@ -202,10 +223,33 @@ export class World {
     );
     rock.position.set(x, scale * 0.55, z);
     rock.rotation.set(Math.random(), Math.random(), Math.random());
-    rock.scale.y = 0.75;
+    rock.scale.set(1, 0.75, 1);
     rock.castShadow = true; rock.receiveShadow = true;
     this.scene.add(rock);
-    this.obstacles.push({ pos: new THREE.Vector3(x, 0, z), radius: scale * 0.95, solid: true, kind: 'rock', mesh: rock });
+
+    const rubble = new THREE.Group();
+    for (let i = 0; i < 6; i++) {
+      const chunk = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(scale * (0.11 + Math.random() * 0.11), 0),
+        rock.material
+      );
+      const a = Math.random() * Math.PI * 2, d = scale * (0.35 + Math.random() * 0.85);
+      chunk.position.set(Math.cos(a) * d, scale * 0.07, Math.sin(a) * d);
+      chunk.scale.y = 0.6;
+      chunk.rotation.set(Math.random(), Math.random(), Math.random());
+      chunk.castShadow = true;
+      rubble.add(chunk);
+    }
+    rubble.position.set(x, 0, z);
+    rubble.visible = false;
+    this.scene.add(rubble);
+
+    this.obstacles.push({
+      pos: new THREE.Vector3(x, 0, z), radius: scale * 0.95, solid: true, kind: 'rock',
+      mesh: rock, stump: rubble, scale,
+      hp: SCENERY.rockHp * scale * 0.7, maxHp: SCENERY.rockHp * scale * 0.7,
+      alive: true, burn: 0, phase: 0, baseY: scale * 0.55,
+    });
     return rock;
   }
 
@@ -239,7 +283,7 @@ export class World {
     for (let i = 0; i < 40; i++) {
       const a = Math.random() * Math.PI * 2;
       const r = WORLD.radius + 12 + Math.random() * 55;
-      this._tree(Math.cos(a) * r, Math.sin(a) * r, 0.9 + Math.random() * 1.1);
+      this._tree(Math.cos(a) * r, Math.sin(a) * r, 0.9 + Math.random() * 1.1, false);
     }
   }
 
@@ -335,7 +379,138 @@ export class World {
     this.sun.position.copy(this.sunDir).multiplyScalar(120).add(this.sun.target.position);
   }
 
-  update(dt) {
+  /**
+   * Hurt a tree or boulder. Returns true if this blow finished it off.
+   * `kind` only picks the flavour of the effects; damage is already scaled.
+   */
+  damage(o, amount, kind, fx) {
+    if (!o || !o.alive || o.kind === 'wall' || o.hp === undefined) return false;
+    o.hp -= amount;
+    o.flash = 0.35;
+    if (kind === 'fire') o.burn = SCENERY.burnTime;
+    if (fx) {
+      const at = o.pos.clone().setY(o.kind === 'tree' ? 2.2 * o.scale : o.scale * 0.8);
+      if (o.kind === 'tree') fx.leaves(at, 5, 1.8 * o.scale);
+      else fx.debris(at, 5, o.scale * 0.5);
+    }
+    if (o.hp > 0) return false;
+    this._fell(o, fx);
+    return true;
+  }
+
+  _fell(o, fx) {
+    o.alive = false;
+    o.solid = false;                       // you can run straight through it now
+    o.burn = 0;
+    o.fall = 0;
+    o.respawn = o.kind === 'tree' ? SCENERY.respawnTree : SCENERY.respawnRock;
+    o.tipAxis = Math.random() * Math.PI * 2;
+    if (!fx) return;
+    const at = o.pos.clone().setY(o.kind === 'tree' ? 2.6 * o.scale : o.scale * 0.6);
+    if (o.kind === 'tree') {
+      fx.leaves(at, 26, 2.6 * o.scale);
+      fx.dustBurst(o.pos.clone().setY(0.3), 14, o.scale);
+    } else {
+      fx.debris(at, 22, o.scale * 0.8);
+    }
+    fx.shake(0.5);
+  }
+
+  /** Topple / crumble, then regrow after a while. */
+  _updateScenery(dt, fx) {
+    for (const o of this.obstacles) {
+      if (o.hp === undefined) continue;
+      o.phase += dt;
+
+      if (o.flash > 0 || o._lit) {
+        o.flash = Math.max(0, (o.flash || 0) - dt * 2);
+        const v = o.flash * 0.5;
+        o.mesh.traverse((m) => { if (m.isMesh && m.material.emissive) m.material.emissive.setRGB(v, v * 0.7, 0); });
+        o._lit = o.flash > 0;
+      }
+
+      if (o.alive && o.burn > 0) {
+        o.burn -= dt;
+        o.hp -= SCENERY.burnDps * dt;
+        if (fx && Math.random() < dt * 12) {
+          fx.ember(o.pos.clone().setY(1.5 * o.scale + Math.random() * 2.5 * o.scale));
+        }
+        // char the whole tree as it burns, so "this one is going down" is
+        // obvious at a glance
+        const left = Math.max(0, o.hp / o.maxHp);
+        if (o.bark) o.bark.color.setHSL(0.07, 0.45, 0.1 + 0.2 * left);
+        if (o.leaves) {
+          for (const leaf of o.leaves) leaf.material.color.setHSL(0.26 * left, 0.35 + 0.35 * left, 0.1 + 0.4 * left);
+        }
+        if (fx && Math.random() < dt * 6) {
+          fx.flame(o.pos.clone().setY(1.2 * o.scale + Math.random() * 2.6 * o.scale),
+            new THREE.Vector3((Math.random() - 0.5) * 0.4, 1, (Math.random() - 0.5) * 0.4), dt * 0.5, 0.35);
+        }
+        if (o.hp <= 0) this._fell(o, fx);
+        continue;
+      }
+
+      if (o.alive) {
+        if (o.grow !== undefined) {           // coming back up
+          o.grow += dt;
+          const u = Math.min(o.grow / SCENERY.growTime, 1);
+          const e = (1 - Math.pow(1 - u, 3)) * (1 + Math.sin(u * Math.PI) * 0.12);
+          const squash = o.kind === 'rock' ? 0.75 : 1;   // boulders sit flatter
+          o.mesh.scale.set(e, e * squash, e);
+          if (u >= 1) { o.mesh.scale.set(1, squash, 1); o.grow = undefined; }
+        }
+        continue;
+      }
+
+      // --- down and out ---
+      if (o.fall < SCENERY.fallTime) {
+        o.fall += dt;
+        const u = Math.min(o.fall / SCENERY.fallTime, 1);
+        if (o.kind === 'tree') {
+          const lean = Math.pow(u, 1.6) * Math.PI * 0.52;
+          o.mesh.rotation.x = Math.cos(o.tipAxis) * lean;
+          o.mesh.rotation.z = Math.sin(o.tipAxis) * lean;
+          if (u > 0.75) o.mesh.scale.setScalar(Math.max(0, 1 - (u - 0.75) * 4));
+        } else {
+          o.mesh.scale.set(1 + u * 0.3, Math.max(0.02, 0.75 - u * 0.8), 1 + u * 0.3);
+          o.mesh.position.y = o.baseY * Math.max(0, 1 - u * 1.4);
+        }
+        if (u >= 1) {
+          o.mesh.visible = false;
+          if (o.stump) o.stump.visible = true;
+        }
+        continue;
+      }
+
+      o.respawn -= dt;
+      if (o.respawn > 0) continue;
+
+      // --- back again ---
+      o.alive = true;
+      o.solid = true;
+      o.hp = o.maxHp;
+      o.fall = 0;
+      o.grow = 0;
+      o.mesh.visible = true;
+      o.mesh.rotation.x = 0;
+      o.mesh.rotation.z = 0;
+      o.mesh.scale.setScalar(0.01);
+      if (o.leaves) {
+        const greens = [0x62c94a, 0x7fd65c, 0x4fb53d];
+        o.leaves.forEach((leaf, i) => leaf.material.color.setHex(greens[i % greens.length]));
+      }
+      if (o.kind === 'rock') {
+        o.mesh.scale.set(0.01, 0.0075, 0.01);
+        o.mesh.position.y = o.baseY;
+      }
+      if (o.stump) o.stump.visible = false;
+      if (o.bark) o.bark.color.setHex(0xa9703f);
+      if (fx) fx.dustBurst(o.pos.clone().setY(0.3), 10, o.scale);
+    }
+  }
+
+  update(dt, fx) {
+    this._updateScenery(dt, fx);
     this.time += dt;
     if (this.clouds) {
       for (const c of this.clouds.children) {

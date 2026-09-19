@@ -4,7 +4,7 @@ compatibility_date = "2026-01-01"
 
 # Only these origins may call the API (comma separated). Use "*" while testing.
 [vars]
-ALLOW_ORIGIN = "https://havban.github.io"
+ALLOW_ORIGIN = "https://havban.github.io,http://localhost:8777"
 
 [[d1_databases]]
 binding = "DB"

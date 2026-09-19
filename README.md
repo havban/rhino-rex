@@ -33,8 +33,11 @@ Semburkan api, gigit, dan sabetkan ekor untuk bertahan gelombang demi gelombang.
   [worker/README.md](worker/README.md). Selama `API` di `js/leaderboard.js` masih kosong,
   permainan otomatis memakai papan lokal saja dan tidak menghubungi apa pun; kalau API-nya
   mati atau lambat, permainan tetap jalan dan skor tetap tersimpan di perangkat.
-- **🩸 Tetesan darah** yang memercik dari badak dan meninggalkan noda di rumput, memudar
-  perlahan. Bisa dimatikan lewat tombol *Darah: ON/OFF* di menu.
+- **Pemandangan yang bisa dihancurkan**: pohon terbakar sampai gosong lalu tumbang dan
+  menyisakan tunggul hangus; batu pecah jadi puing. Semburan api membakar, bola api
+  meledakkan, sapuan ekor menghantam, dan badak yang menyeruduk meleset ikut merobohkannya.
+  Yang roboh tidak lagi menghalangi jalan, lalu tumbuh/terbentuk kembali sekitar setengah
+  menit kemudian — jadi arenanya terus berubah bentuk tanpa pernah gundul.
 - **Responsif**: satu build jalan di ponsel, tablet, dan laptop. Kontrol sentuh muncul
   otomatis di layar sentuh (dan laptop layar-sentuh tetap bisa pakai keyboard + mouse),
   HUD merapat di layar pendek, bidang pandang melebar di mode potret, resolusi render

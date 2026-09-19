@@ -80,13 +80,28 @@ export const FIREBALL = {
   knockback: 18,
 };
 
-export const BLOOD = {
-  dropsPerHit: 7,
-  dropsPerKill: 22,
-  splatMax: 72,           // ground splats kept alive at once
-  splatLife: 26,          // seconds before a splat has faded away
-  color: 0xb3121f,
-  colorDark: 0x9c1421,    // splat tint on the grass — must still read as red
+export const IMPACT = {
+  sparksPerHit: 9,
+  sparksPerKill: 24,
+  spark: 0xfff0b8,
+  sparkFade: 0xff9a3c,
+};
+
+// Trees and boulders take damage and come back later, so the arena keeps
+// changing shape during a run without ever emptying out.
+export const SCENERY = {
+  treeHp: 100,
+  rockHp: 170,
+  burnDps: 16,            // a tree left alight keeps losing health
+  burnTime: 5.0,
+  smashDamage: 55,        // a rhino ending its charge on the scenery
+  tailDamage: 34,
+  fireDps: 26,            // the breath, per second inside the cone
+  blastDamage: 90,        // fireball, at the centre of the blast
+  respawnTree: 26,
+  respawnRock: 34,
+  fallTime: 1.1,          // how long the topple/crumble animation runs
+  growTime: 1.6,
 };
 
 export const RHINO = {

@@ -1,6 +1,6 @@
 // Enemy rhinos: procedural model, charge-based AI, health bars.
 import * as THREE from 'three';
-import { RHINO, WORLD } from './config.js';
+import { RHINO, WORLD, SCENERY } from './config.js';
 import { makeProfile, tubeAlongZ, ellipsoid, capsule, cone, skinMaterial } from './geom.js';
 
 const BODY_Y = 1.95;        // height of the torso pivot above the ground
@@ -435,7 +435,7 @@ export class Rhino {
       this.vel.multiplyScalar(-0.25);
       fx?.dustBurst(this.pos.clone().setY(1.5), 16, this.scaleF * 1.4);
       fx?.shake(0.5);
-      if (hit.kind === 'tree' && hit.mesh) hit.mesh.userData.shake = 1;
+      world.damage(hit, SCENERY.smashDamage * this.scaleF, 'smash', fx);
       this.setState('stun', RHINO.crashStun);
     }
     const damp = Math.max(0, 1 - (this.state === 'charge' ? 0.6 : 5.0) * dt);

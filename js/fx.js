@@ -1,6 +1,6 @@
 // Particles (flame, dust, embers, sparks), floating damage numbers and camera shake.
 import * as THREE from 'three';
-import { BLOOD } from './config.js';
+import { IMPACT } from './config.js';
 
 function sprite() {
   const c = document.createElement('canvas');
@@ -16,131 +16,6 @@ function sprite() {
 }
 
 const MAX = 1400;
-
-function splatTexture() {
-  const c = document.createElement('canvas');
-  c.width = c.height = 128;
-  const g = c.getContext('2d');
-  g.clearRect(0, 0, 128, 128);
-  g.fillStyle = '#fff';
-  // one fat blob plus a few satellites, so no two splats look alike
-  const blob = (x, y, r) => {
-    g.beginPath();
-    for (let a = 0; a < Math.PI * 2; a += 0.35) {
-      const rr = r * (0.72 + Math.random() * 0.45);
-      const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr;
-      a === 0 ? g.moveTo(px, py) : g.lineTo(px, py);
-    }
-    g.closePath();
-    g.fill();
-  };
-  blob(64, 64, 34);
-  for (let i = 0; i < 7; i++) {
-    const a = Math.random() * Math.PI * 2, d = 34 + Math.random() * 22;
-    blob(64 + Math.cos(a) * d, 64 + Math.sin(a) * d, 4 + Math.random() * 7);
-  }
-  const t = new THREE.CanvasTexture(c);
-  t.needsUpdate = true;
-  return t;
-}
-
-// Pool of flat blood marks lying on the grass, faded out over time.
-// One instanced draw call; unused slots keep alpha 0 and are discarded.
-class Splats {
-  constructor(scene, max) {
-    this.max = max;
-    this.cursor = 0;
-    this.any = false;
-    this.age = new Float32Array(max);
-    this.live = new Uint8Array(max);
-
-    const geo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
-    this.alpha = new THREE.InstancedBufferAttribute(new Float32Array(max), 1);
-    this.alpha.setUsage(THREE.DynamicDrawUsage);
-    geo.setAttribute('iAlpha', this.alpha);
-
-    const mat = new THREE.ShaderMaterial({
-      uniforms: { map: { value: splatTexture() }, tint: { value: new THREE.Color(BLOOD.colorDark) } },
-      vertexShader: `
-        attribute float iAlpha;
-        varying vec2 vUv;
-        varying float vA;
-        void main() {
-          vUv = uv; vA = iAlpha;
-          gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
-        }`,
-      fragmentShader: `
-        uniform sampler2D map;
-        uniform vec3 tint;
-        varying vec2 vUv;
-        varying float vA;
-        void main() {
-          float a = texture2D(map, vUv).a * vA;
-          if (a < 0.012) discard;
-          gl_FragColor = vec4(tint, a);
-        }`,
-      transparent: true,
-      depthWrite: false,
-      polygonOffset: true,
-      polygonOffsetFactor: -4,
-    });
-
-    this.mesh = new THREE.InstancedMesh(geo, mat, max);
-    this.mesh.frustumCulled = false;
-    this.mesh.renderOrder = 1;
-    this.mesh.count = max;
-    this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    const id = new THREE.Matrix4();
-    for (let i = 0; i < max; i++) this.mesh.setMatrixAt(i, id);
-    this.mesh.instanceMatrix.needsUpdate = true;
-    scene.add(this.mesh);
-
-    this._m = new THREE.Matrix4();
-    this._q = new THREE.Quaternion();
-    this._s = new THREE.Vector3();
-    this._p = new THREE.Vector3();
-    this._axis = new THREE.Vector3(0, 1, 0);
-  }
-
-  add(x, z, scale) {
-    const i = this.cursor;
-    this.cursor = (this.cursor + 1) % this.max;
-    this.age[i] = 0;
-    this.live[i] = 1;
-    this.any = true;
-    this._q.setFromAxisAngle(this._axis, Math.random() * Math.PI * 2);
-    this._p.set(x, 0.05 + (i % 6) * 0.0015, z);
-    this._s.set(scale, 1, scale);
-    this._m.compose(this._p, this._q, this._s);
-    this.mesh.setMatrixAt(i, this._m);
-    this.mesh.instanceMatrix.needsUpdate = true;
-    this.alpha.array[i] = 0.7;
-    this.alpha.needsUpdate = true;
-  }
-
-  update(dt) {
-    if (!this.any) return;
-    let dirty = false, live = 0;
-    for (let i = 0; i < this.max; i++) {
-      if (!this.live[i]) continue;
-      live++;
-      this.age[i] += dt;
-      const u = this.age[i] / BLOOD.splatLife;
-      if (u >= 1) { this.live[i] = 0; this.alpha.array[i] = 0; dirty = true; continue; }
-      const a = 0.7 * Math.min(1, (1 - u) * 2.4);
-      if (Math.abs(a - this.alpha.array[i]) > 0.004) { this.alpha.array[i] = a; dirty = true; }
-    }
-    if (dirty) this.alpha.needsUpdate = true;
-    if (!live) this.any = false;
-  }
-
-  clear() {
-    this.live.fill(0);
-    this.alpha.array.fill(0);
-    this.alpha.needsUpdate = true;
-    this.any = false;
-  }
-}
 
 export class FX {
   constructor(scene, camera, overlay) {
@@ -193,7 +68,7 @@ export class FX {
     // particle bookkeeping (plain arrays, pooled)
     this.p = [];
     for (let i = 0; i < MAX; i++) {
-      this.p.push({ alive: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, max: 1, s0: 1, s1: 0, c0: new THREE.Color(), c1: new THREE.Color(), drag: 1, grav: 0, blood: false });
+      this.p.push({ alive: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, max: 1, s0: 1, s1: 0, c0: new THREE.Color(), c1: new THREE.Color(), drag: 1, grav: 0 });
     }
     this.cursor = 0;
     this.count = 0;
@@ -202,9 +77,6 @@ export class FX {
     this.fireLight = new THREE.PointLight(0xff9a3c, 0, 40, 2);
     this.fireLight.visible = false;
     scene.add(this.fireLight);
-
-    this.splats = new Splats(scene, BLOOD.splatMax);
-    this.gore = true;          // toggled from the menu
 
     this._numbers = [];
     this._v = new THREE.Vector3();
@@ -219,7 +91,7 @@ export class FX {
       if (!cand.alive) { part = cand; break; }
     }
     if (!part) part = this.p[this.cursor];
-    Object.assign(part, { alive: true, life: 0, blood: false }, opts);
+    Object.assign(part, { alive: true, life: 0 }, opts);
     return part;
   }
 
@@ -347,24 +219,60 @@ export class FX {
     }
   }
 
-  /** Spray of droplets from a wound; each one stains the grass where it lands. */
-  blood(p, dir = null, count = BLOOD.dropsPerHit, force = 1) {
-    if (!this.gore) { this.impact(p, 0xff6b7a, Math.round(count * 0.6)); return; }
-    const c0 = new THREE.Color(BLOOD.color);
-    const c1 = new THREE.Color(BLOOD.colorDark);
+  /**
+   * Cartoon hit burst: a puff of dust and a spray of bright sparks. Stands in
+   * for the red stuff that used to be here - this is a children's game.
+   */
+  thwack(p, dir = null, count = IMPACT.sparksPerHit, force = 1) {
+    const c0 = new THREE.Color(IMPACT.spark);
+    const c1 = new THREE.Color(IMPACT.sparkFade);
     for (let i = 0; i < count; i++) {
       const a = Math.random() * Math.PI * 2;
-      const up = 3 + Math.random() * 6 * force;
-      const out = (2.5 + Math.random() * 7) * force;
-      const vx = Math.cos(a) * out + (dir ? dir.x * 6 * force : 0);
-      const vz = Math.sin(a) * out + (dir ? dir.z * 6 * force : 0);
+      const up = 3 + Math.random() * 7 * force;
+      const out = (3 + Math.random() * 8) * force;
       this._spawn({
         x: p.x, y: p.y, z: p.z,
-        vx, vy: up, vz,
-        max: 1.6, s0: 0.42 + Math.random() * 0.4, s1: 0.32 + Math.random() * 0.3,
-        c0, c1, drag: 0.995, grav: -26, blood: true,
+        vx: Math.cos(a) * out + (dir ? dir.x * 7 * force : 0),
+        vy: up,
+        vz: Math.sin(a) * out + (dir ? dir.z * 7 * force : 0),
+        max: 0.34 + Math.random() * 0.26,
+        s0: 1.5 + Math.random() * 1.1, s1: 0.25,
+        c0, c1, drag: 0.9, grav: -13,
       });
     }
+    this.dustBurst(p.clone().setY(Math.max(p.y - 1.4, 0.2)), Math.round(3 + count * 0.3), 0.7 * force);
+  }
+
+  /** Leaves torn off a tree. */
+  leaves(p, count = 16, spread = 2.4) {
+    const c0 = new THREE.Color(0x7fd65c);
+    const c1 = new THREE.Color(0x3f7a2c);
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      this._spawn({
+        x: p.x + (Math.random() - 0.5) * spread, y: p.y + (Math.random() - 0.5) * spread, z: p.z + (Math.random() - 0.5) * spread,
+        vx: Math.cos(a) * (1.5 + Math.random() * 4), vy: 1 + Math.random() * 4, vz: Math.sin(a) * (1.5 + Math.random() * 4),
+        max: 1.5 + Math.random() * 1.2, s0: 1.4, s1: 0.9,
+        c0, c1, drag: 0.94, grav: -6,
+      });
+    }
+  }
+
+  /** Stone chips from a shattering boulder. */
+  debris(p, count = 18, scale = 1) {
+    const c0 = new THREE.Color(0xcfc6b6);
+    const c1 = new THREE.Color(0x6f675c);
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2, b = Math.random() * 1.1;
+      const sp = (5 + Math.random() * 12) * scale;
+      this._spawn({
+        x: p.x, y: p.y, z: p.z,
+        vx: Math.cos(a) * Math.cos(b) * sp, vy: Math.sin(b) * sp + 3, vz: Math.sin(a) * Math.cos(b) * sp,
+        max: 0.8 + Math.random() * 0.7, s0: 1.8 * scale, s1: 1.1 * scale,
+        c0, c1, drag: 0.93, grav: -18,
+      });
+    }
+    this.dustBurst(p.clone().setY(0.3), 12, scale * 1.2);
   }
 
   ring(p, color = 0xffe08a) {
@@ -394,7 +302,6 @@ export class FX {
   }
 
   update(dt) {
-    this.splats.update(dt);
     const pos = this.pos, col = this.col, size = this.size;
     let n = 0;
     for (let i = 0; i < MAX; i++) {
@@ -407,14 +314,7 @@ export class FX {
       const d = Math.pow(q.drag, dt * 60);
       q.vx *= d; q.vy *= d; q.vz *= d;
       q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt;
-      if (q.y < 0.05) {
-        if (q.blood) {
-          this.splats.add(q.x, q.z, 0.45 + Math.random() * 0.85);
-          q.alive = false;
-          continue;
-        }
-        q.y = 0.05; q.vy = Math.abs(q.vy) * 0.2; q.vx *= 0.7; q.vz *= 0.7;
-      }
+      if (q.y < 0.05) { q.y = 0.05; q.vy = Math.abs(q.vy) * 0.2; q.vx *= 0.7; q.vz *= 0.7; }
       const j = n * 3;
       pos[j] = q.x; pos[j + 1] = q.y; pos[j + 2] = q.z;
       const fade = 1 - u;

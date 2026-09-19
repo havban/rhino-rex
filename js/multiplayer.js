@@ -103,7 +103,7 @@ export class Session {
         void peer;
         if (r && r.alive) {
           const dealt = r.takeDamage(msg.d, { knock: new THREE.Vector3(msg.kx || 0, 0, msg.kz || 0), knockStrength: msg.ks || 8 });
-          this.game.fx.blood(r.pos.clone().setY(2.2 * r.scaleF), null, 6, 1);
+          this.game.fx.thwack(r.pos.clone().setY(2.2 * r.scaleF), null, 6, 1);
           if (!r.alive) this.game._onKill(r, msg.k || 'bite');
           else this.game.fx.number(r.pos.clone().setY(4.4 * r.scaleF), Math.round(dealt), '');
         }
@@ -118,7 +118,7 @@ export class Session {
       case 'fx': {
         const v = new THREE.Vector3(msg.x, msg.y, msg.z);
         if (msg.k === 'blast') this.game.fx.blast(v);
-        else if (msg.k === 'blood') this.game.fx.blood(v, null, 8, 1);
+        else if (msg.k === 'thwack') this.game.fx.thwack(v, null, 8, 1);
         else this.game.fx.impact(v, 0xffc247, 16);
         break;
       }
