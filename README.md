@@ -221,15 +221,23 @@ dan daftar jebakan yang sudah pernah memakan waktu.
 
 ## Lisensi
 
-**GNU General Public License v3.0** — lihat [LICENSE](LICENSE).
+**GNU Affero General Public License v3.0** — lihat [LICENSE](LICENSE).
 
 Rhino Rex adalah perangkat lunak bebas: kamu boleh memakai, mempelajari,
 mengubah, dan membagikannya, dengan syarat karya turunannya juga dibagikan di
 bawah lisensi yang sama beserta kode sumbernya. Tidak ada jaminan apa pun.
 
-Three.js (di `vendor/`) tetap memakai lisensi MIT-nya sendiri, yang kompatibel
-dengan GPL — rinciannya di [THIRD-PARTY.md](THIRD-PARTY.md).
+Bedanya dengan GPL biasa ada di **pasal 13**: kalau kamu mengubah game ini lalu
+menjalankannya di server supaya orang lain bisa memainkannya, orang-orang itu
+berhak mendapatkan kode sumber versimu — walaupun kamu tidak pernah membagikan
+salinan berkasnya. Karena itu menu utama memuat pranala **"Kode sumber versi
+ini"** yang menunjuk tepat ke commit yang sedang berjalan. Kalau kamu
+menerbitkan turunannya, arahkan pranala itu ke repositorimu sendiri.
 
-Catatan: rilis sebelum commit ini terbit di bawah MIT. Salinan yang sudah
-terlanjur diambil orang dengan lisensi itu tetap MIT; perubahan ini berlaku
-untuk versi sejak sekarang.
+Three.js (di `vendor/`) tetap memakai lisensi MIT-nya sendiri, yang kompatibel
+dengan AGPL — rinciannya di [THIRD-PARTY.md](THIRD-PARTY.md).
+
+Catatan: rilis sebelum 19 September 2026 terbit di bawah MIT, dan sempat
+sebentar di bawah GPL v3. Salinan yang sudah terlanjur diambil dengan lisensi
+itu tetap berlaku dengan lisensinya masing-masing; perubahan ini berlaku untuk
+versi sejak sekarang.

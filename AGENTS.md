@@ -40,9 +40,16 @@ brokers the multiplayer handshake, but the game works fully without it.
 
 ## Licence
 
-GPL-3.0 (see `LICENSE`). Contributions are taken under the same licence. The
+AGPL-3.0 (see `LICENSE`). Contributions are taken under the same licence. The
 vendored Three.js stays MIT with its header intact — keep it, and keep
 `THIRD-PARTY.md` current if anything else ever gets vendored.
+
+Section 13 matters here because the game is played over a network: anyone
+using a modified version must be offered its Corresponding Source. That is
+satisfied by the **"Kode sumber versi ini"** link on the menu, which
+`Update.stampSourceLink()` points at the exact deployed commit. If you fork
+and host this, repoint that link at your own repository — and do not remove
+it.
 
 ## Layout
 

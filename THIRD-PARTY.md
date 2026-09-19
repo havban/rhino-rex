@@ -1,8 +1,8 @@
 # Third-party licences
 
-Rhino Rex itself is licensed under the **GNU General Public License v3.0** —
-see [LICENSE](LICENSE). The components below keep their own licences, which
-are compatible with the GPL.
+Rhino Rex itself is licensed under the **GNU Affero General Public License
+v3.0** — see [LICENSE](LICENSE). The components below keep their own licences,
+which are compatible with the AGPL.
 
 ## Three.js — MIT
 

@@ -3,12 +3,17 @@
 // Copyright (C) 2026 havban
 //
 // This program is free software: you can redistribute it and/or modify it
-// under the terms of the GNU General Public License as published by the Free
-// Software Foundation, either version 3 of the License, or (at your option)
-// any later version. It is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
-// Public License for more details: <https://www.gnu.org/licenses/>.
+// under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or (at your
+// option) any later version. It is distributed in the hope that it will be
+// useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
+// General Public License for more details: <https://www.gnu.org/licenses/>.
+//
+// Because this is played over a network, section 13 applies: anyone
+// interacting with a modified version must be offered its Corresponding
+// Source. The menu carries a source link pointing at the exact deployed
+// commit, which is how that obligation is met here - keep it working.
 import * as THREE from 'three';
 import { REX, ATTACK, WAVES, WORLD, CAMERA, RHINO, FIREBALL, IMPACT, SCENERY, PROGRESS } from './config.js';
 import { World } from './world.js';
@@ -123,6 +128,8 @@ class Game {
       this.coarse ? 'Perangkat sentuh' : 'Perangkat desktop');
     if (/[?&]stats=1/.test(location.search)) Stats.mountPanel();
     window.__stats = () => Stats.mountPanel();
+
+    Update.stampSourceLink('https://github.com/havban/rhino-rex');
 
     // tell the player when a newer build has gone out
     Update.watch((build) => {

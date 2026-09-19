@@ -58,6 +58,19 @@ export function watch(onUpdate) {
   return () => { stopped = true; clearInterval(timer); };
 }
 
+/**
+ * Point the menu's source link at the exact commit that is running.
+ * AGPL section 13 asks network users to be offered *this* version's source,
+ * not whatever happens to be on the default branch today.
+ */
+export function stampSourceLink(repo) {
+  const el = document.getElementById('src-link');
+  const build = currentBuild();
+  if (!el || !build) return;
+  el.href = `${repo}/tree/${build}`;
+  el.title = `Kode sumber build ${build}`;
+}
+
 /** Reload onto the new build, stepping around the CDN cache. */
 export function reload(build) {
   const url = new URL(location.href);
