@@ -19,8 +19,13 @@ Semburkan api, gigit, dan sabetkan ekor untuk bertahan gelombang demi gelombang.
 - **Empat jenis badak**: anakan yang gesit, banteng, badak berbaju zirah, dan **Matriark** raksasa
   yang muncul tiap gelombang kelima.
 - **Tema cerah**: padang rumput hijau, langit biru, bunga warna-warni, awan, dan perbukitan.
+- **Model halus**: T-Rex bertulang (SkinnedMesh) dengan tengkorak dalam bergigi, tangan
+  kecil bercakar, dan kaki digitigrade; badak bertubuh tong dengan dua tanduk.
 - Gelombang tanpa akhir, skor + combo, buah semangka penyembuh, skor terbaik tersimpan lokal.
-- Jalan di desktop dan ponsel (joystick sentuh), dengan pilihan kualitas grafis.
+- **Responsif**: satu build jalan di ponsel, tablet, dan laptop. Kontrol sentuh muncul
+  otomatis di layar sentuh (dan laptop layar-sentuh tetap bisa pakai keyboard + mouse),
+  HUD merapat di layar pendek, bidang pandang melebar di mode potret, resolusi render
+  turun-naik sendiri kalau perangkat mulai tersengal.
 
 ## Kontrol
 
@@ -35,8 +40,9 @@ Semburkan api, gigit, dan sabetkan ekor untuk bertahan gelombang demi gelombang.
 | Pukulan ekor | Klik tengah / `K` |
 | Jeda | `Esc` |
 
-Di ponsel: joystick di kiri, geser separuh layar kanan untuk memutar kamera,
-tombol bulat di kanan untuk menyerang.
+Di ponsel/tablet: joystick di kiri, geser separuh layar kanan untuk memutar kamera,
+tombol bulat di kanan untuk menyerang, lompat, dan lari. Layar akan masuk mode
+layar-penuh saat permainan dimulai. Mode lanskap paling lega, tapi potret tetap jalan.
 
 ## Teknis
 

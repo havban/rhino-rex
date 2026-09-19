@@ -19,8 +19,13 @@ class Game {
     this.quality = localStorage.getItem('rr.quality') || (matchMedia('(max-width: 900px)').matches ? 'medium' : 'high');
     this.soundOn = localStorage.getItem('rr.sound') !== 'off';
 
+    this.coarse = matchMedia('(pointer: coarse)').matches;
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: this.quality !== 'low', powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, this.quality === 'high' ? 2 : 1.35));
+    // phones ship 3x screens that no mobile GPU wants to fill at 60fps
+    this.prCap = Math.min(devicePixelRatio || 1, this.quality === 'high' ? 2 : this.quality === 'medium' ? 1.5 : 1);
+    if (this.coarse) this.prCap = Math.min(this.prCap, 1.5);
+    this.prScale = 1;
+    this.renderer.setPixelRatio(this.prCap);
     this.renderer.shadowMap.enabled = this.quality !== 'low';
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -37,7 +42,13 @@ class Game {
     this.audio = new Audio();
     this.audio.setEnabled(this.soundOn);
     this.input = new Input(this.canvas);
-    if (this.input.touch) { $('touch').classList.add('on'); document.body.classList.add('is-touch'); }
+    this.input.onModeChange = (touch) => {
+      $('touch').classList.toggle('on', touch);
+      document.body.classList.toggle('is-touch', touch);
+    };
+    // touch-first on phones and tablets; hybrid laptops start in mouse mode and
+    // switch the moment a finger lands on the screen
+    if (this.input.hasTouch && this.coarse) { this.input.touchActive = true; this.input.onModeChange(true); }
 
     this.rhinos = [];
     this.pickups = [];
@@ -53,6 +64,8 @@ class Game {
     this._bindUI();
     this._resize();
     addEventListener('resize', () => this._resize());
+    addEventListener('orientationchange', () => setTimeout(() => this._resize(), 120));
+    visualViewport?.addEventListener('resize', () => this._resize());
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && this.state === 'playing') this.pause(true);
     });
@@ -98,17 +111,43 @@ class Game {
     });
 
     $('best-menu').textContent = this.best.toLocaleString('id-ID');
+
+    const rotate = $('rotate');
+    rotate?.addEventListener('click', () => rotate.classList.add('dismissed'));
   }
 
   _resize() {
-    const w = innerWidth, h = innerHeight;
+    const w = Math.round(visualViewport?.width || innerWidth);
+    const h = Math.round(visualViewport?.height || innerHeight);
     const aspect = w / h;
     this.camera.aspect = aspect;
-    this.camera.fov = CAMERA.fov;
+    // keep a sane horizontal field of view on tall phone screens
+    this.camera.fov = aspect < 1 ? THREE.MathUtils.clamp(CAMERA.fov / Math.max(aspect, 0.45), CAMERA.fov, 80) : CAMERA.fov;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h, false);
-    // portrait phones see a very narrow slice of the world — back off a little
-    this.zoom = aspect < 1.0 ? 1.28 : aspect < 1.35 ? 1.12 : 1;
+    // short landscape screens (phones on their side) want a little more room too
+    this.zoom = aspect < 1.0 ? 1.18 : h < 460 ? 1.1 : 1;
+    document.body.classList.toggle('is-short', h < 460);
+    document.body.classList.toggle('is-portrait', aspect < 1);
+  }
+
+  // Drop resolution if the device cannot keep up, and creep back when it can.
+  _adaptResolution(dt) {
+    if (dt <= 0 || this.state !== 'playing') return;
+    this._frameAvg = this._frameAvg ? this._frameAvg * 0.93 + dt * 0.07 : dt;
+    this._slow = (this._slow || 0) + (this._frameAvg > 1 / 42 ? dt : -dt * 0.5);
+    this._slow = clamp(this._slow, 0, 4);
+    this._fast = (this._fast || 0) + (this._frameAvg < 1 / 57 ? dt : -dt);
+    this._fast = clamp(this._fast, 0, 8);
+    if (this._slow > 1.6 && this.prScale > 0.62) {
+      this.prScale = Math.max(0.62, this.prScale - 0.14);
+      this.renderer.setPixelRatio(this.prCap * this.prScale);
+      this._slow = 0; this._fast = 0;
+    } else if (this._fast > 6 && this.prScale < 1) {
+      this.prScale = Math.min(1, this.prScale + 0.12);
+      this.renderer.setPixelRatio(this.prCap * this.prScale);
+      this._fast = 0;
+    }
   }
 
   // ------------------------------------------------------------- flow ----
@@ -143,6 +182,9 @@ class Game {
     $('gameover').classList.add('hidden');
     $('pause').classList.add('hidden');
     $('hud').classList.remove('hidden');
+    if (this.input.touchActive) {
+      document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).catch(() => {});
+    }
     this.input.requestLock();
     this.banner('SIAP!', 'Badak datang…');
   }
@@ -434,6 +476,7 @@ class Game {
     requestAnimationFrame(() => this._loop());
     let dt = Math.min(this.clock.getDelta(), 0.05);
     if (this.state === 'paused') dt = 0;
+    this._adaptResolution(dt);
     this._update(dt);
     this.renderer.render(this.scene, this.camera);
   }

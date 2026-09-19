@@ -5,13 +5,20 @@ import { makeProfile, tubeAlongZ, ellipsoid, capsule, cone, skinMaterial } from 
 
 // Bone layout along the body axis (local Z, hips at the origin).
 const FORWARD_BONES = [
-  ['spine', 1.05], ['chest', 1.00], ['neck1', 1.10], ['neck2', 0.90], ['headBone', 0.85],
+  ['spine', 1.00], ['chest', 0.95], ['neck1', 0.85], ['neck2', 0.70], ['headBone', 0.70],
 ];
-const TAIL_BONES = [1.35, 1.15, 1.10, 1.05, 1.00];
+const TAIL_BONES = [1.30, 1.20, 1.15, 1.10, 1.00];
 
 // Rest curvature that turns the straight bind pose into a T-Rex silhouette.
-const POSE = { spine: -0.08, chest: -0.32, neck1: -0.78, neck2: -0.56, head: 1.42, tail0: 0.14, tail: 0.02 };
-const HIP_Y = 3.1;          // height of the hip pivot above the ground
+const POSE = {
+  body: -0.34,            // torso tipped up: the classic upright tyrannosaur stance
+  spine: -0.05, chest: -0.2, neck1: -0.5, neck2: -0.32, head: 1.05,
+  tail0: 0.34, tail: 0.04, // ... with the tail levelling out behind to balance it
+};
+const HIP_Y = 3.5;
+// Rest angles that give the leg its digitigrade "Z": femur forward, shin back,
+// metatarsus forward again onto the toes.
+const LEG = { hip: -0.30, knee: 0.65, ankle: -0.45 };          // height of the hip pivot above the ground
 
 export class Rex {
   constructor(scene) {
@@ -106,18 +113,18 @@ export class Rex {
     const zTail = -(TAIL_BONES.reduce((a, b) => a + b, 0)) - 0.7;
     const zHead = FORWARD_BONES.reduce((a, b) => a + b[1], 0) - 0.15;
     const radius = makeProfile([
-      { z: zTail, v: 0.09 }, { z: zTail + 0.7, v: 0.22 }, { z: -4.6, v: 0.38 },
-      { z: -3.6, v: 0.52 }, { z: -2.5, v: 0.70 }, { z: -1.35, v: 0.92 },
-      { z: -0.5, v: 1.02 }, { z: 0.2, v: 1.14 }, { z: 1.05, v: 1.18 },
-      { z: 1.8, v: 1.14 }, { z: 2.35, v: 1.02 }, { z: 2.9, v: 0.86 },
-      { z: 3.4, v: 0.74 }, { z: 3.9, v: 0.66 }, { z: zHead, v: 0.62 },
+      { z: zTail, v: 0.10 }, { z: zTail + 0.7, v: 0.24 }, { z: -4.4, v: 0.42 },
+      { z: -3.3, v: 0.60 }, { z: -2.2, v: 0.82 }, { z: -1.1, v: 1.06 },
+      { z: -0.3, v: 1.26 }, { z: 0.35, v: 1.28 }, { z: 1.0, v: 1.20 },
+      { z: 1.55, v: 1.12 }, { z: 2.05, v: 1.0 }, { z: 2.5, v: 0.82 },
+      { z: 2.95, v: 0.68 }, { z: 3.4, v: 0.62 }, { z: zHead, v: 0.60 },
     ]);
     const squashX = makeProfile([
-      { z: zTail, v: 0.95 }, { z: -2, v: 0.92 }, { z: 0.8, v: 0.87 }, { z: 3.2, v: 0.92 }, { z: zHead, v: 0.97 },
+      { z: zTail, v: 0.95 }, { z: -2, v: 0.90 }, { z: 0.8, v: 0.84 }, { z: 2.6, v: 0.88 }, { z: zHead, v: 0.95 },
     ]);
     const centerY = makeProfile([
-      { z: zTail, v: 0 }, { z: -2, v: 0.03 }, { z: 0.3, v: -0.06 },
-      { z: 1.3, v: -0.08 }, { z: 2.6, v: 0.0 }, { z: zHead, v: 0.05 },
+      { z: zTail, v: 0 }, { z: -2.2, v: 0.06 }, { z: -0.3, v: -0.02 },
+      { z: 1.0, v: -0.08 }, { z: 1.8, v: -0.1 }, { z: 2.6, v: 0.0 }, { z: zHead, v: 0.06 },
     ]);
     const cBody = new THREE.Color(skin), cBelly = new THREE.Color(belly), cStripe = new THREE.Color(stripe);
 
@@ -132,7 +139,7 @@ export class Rex {
         out.copy(cBody);
         const band = Math.pow(Math.max(0, Math.sin(z * 1.45 + 0.4)), 8);
         out.lerp(cStripe, Math.max(0, s) * band * 0.95);
-        out.lerp(cBelly, THREE.MathUtils.smoothstep(-s, 0.2, 0.8));
+        out.lerp(cBelly, THREE.MathUtils.smoothstep(-s, -0.05, 0.6));
       },
     });
 
@@ -144,76 +151,111 @@ export class Rex {
     body.add(mesh);
     this.mesh = mesh;
 
-    // ---- head ------------------------------------------------------------
+    // ---- head: a deep, narrow theropod skull with a hinged jaw -------------
     const head = new THREE.Group();
-    head.scale.setScalar(1.32);
+    head.scale.setScalar(1.12);
     this.headBone.add(head);
     this.head = head;
 
-    const skull = ellipsoid(0.68, 0.62, 0.9, this.mats.skin, 20);
-    skull.position.set(0, 0.1, 0.5);
-    head.add(skull);
-    const cheek = ellipsoid(0.56, 0.48, 0.55, this.mats.skin, 18);
-    cheek.position.set(0, -0.02, 1.15);
-    head.add(cheek);
-    const snout = ellipsoid(0.45, 0.35, 0.72, this.mats.skin, 18);
-    snout.position.set(0, -0.02, 1.72);
-    head.add(snout);
-    const nose = ellipsoid(0.34, 0.29, 0.3, this.mats.skin, 16);
-    nose.position.set(0, 0.0, 2.28);
-    head.add(nose);
-    const crest = ellipsoid(0.5, 0.16, 0.6, this.mats.stripe, 16);
-    crest.position.set(0, 0.55, 0.75);
-    head.add(crest);
+    // Upper skull. The cross-section is taller than it is wide and the lower
+    // edge stays flat, which is what makes a tooth line read as a T-Rex snout
+    // instead of a dog muzzle.
+    const skullR = makeProfile([
+      { z: -0.55, v: 0.30 }, { z: -0.3, v: 0.72 }, { z: 0.0, v: 0.92 },
+      { z: 0.4, v: 0.90 }, { z: 0.85, v: 0.80 }, { z: 1.3, v: 0.68 },
+      { z: 1.7, v: 0.55 }, { z: 1.95, v: 0.42 }, { z: 2.1, v: 0.18 },
+    ]);
+    const skullSquashY = 1.04, skullSquashX = makeProfile([
+      { z: -0.55, v: 0.80 }, { z: 0.3, v: 0.76 }, { z: 1.2, v: 0.68 }, { z: 2.1, v: 0.62 },
+    ]);
+    const toothLine = -0.86;
+    const skullCenter = (z) => toothLine + skullR(z) * skullSquashY;
 
+    const skull = new THREE.Mesh(tubeAlongZ({
+      zStart: -0.55, zEnd: 2.1, rings: 38, radial: 18,
+      radius: skullR,
+      squash: (z) => ({ x: skullSquashX(z), y: skullSquashY }),
+      center: skullCenter,
+    }), this.mats.skin);
+    skull.castShadow = true;
+    head.add(skull);
+
+    // brow ridge + lacrimal horns: the angry-eyebrow silhouette
     for (const sx of [-1, 1]) {
-      const brow = ellipsoid(0.22, 0.13, 0.3, this.mats.stripe, 14);
-      brow.position.set(sx * 0.44, 0.44, 1.12);
-      brow.rotation.z = sx * 0.2;
+      const brow = ellipsoid(0.17, 0.12, 0.34, this.mats.stripe, 14);
+      brow.position.set(sx * 0.46, skullCenter(0.68) + 0.46, 0.68);
+      brow.rotation.z = sx * 0.22;
+      brow.rotation.y = sx * -0.12;
       head.add(brow);
-      const eye = ellipsoid(0.19, 0.19, 0.19, this.mats.eye, 16);
-      eye.position.set(sx * 0.46, 0.27, 1.16);
+      const hornlet = cone(0.1, 0.26, this.mats.stripe, 8);
+      hornlet.position.set(sx * 0.47, skullCenter(0.78) + 0.54, 0.78);
+      hornlet.rotation.z = sx * 0.5;
+      head.add(hornlet);
+
+      const eye = ellipsoid(0.17, 0.18, 0.15, this.mats.eye, 16);
+      eye.position.set(sx * 0.48, skullCenter(0.58) + 0.14, 0.58);
       head.add(eye);
-      const pupil = ellipsoid(0.1, 0.11, 0.1, this.mats.pupil, 12);
-      pupil.position.set(sx * 0.53, 0.28, 1.29);
+      const pupil = ellipsoid(0.07, 0.12, 0.08, this.mats.pupil, 12);
+      pupil.position.set(sx * 0.57, skullCenter(0.58) + 0.14, 0.66);
       head.add(pupil);
-      const nostril = ellipsoid(0.07, 0.06, 0.07, this.mats.pupil, 10);
-      nostril.position.set(sx * 0.16, 0.14, 2.5);
+
+      const nostril = ellipsoid(0.06, 0.05, 0.08, this.mats.pupil, 10);
+      nostril.position.set(sx * 0.12, skullCenter(1.75) + 0.28, 1.75);
       head.add(nostril);
     }
+    // a ridge along the top of the snout
+    const snoutRidge = ellipsoid(0.13, 0.1, 0.7, this.mats.stripe, 12);
+    snoutRidge.position.set(0, skullCenter(1.3) + 0.52, 1.3);
+    head.add(snoutRidge);
 
-    for (let i = 0; i < 7; i++) {
+    // upper teeth, biggest in the middle of the jaw
+    const toothAt = (z) => {
+      const big = 1 - Math.abs(z - 1.0) / 1.3;
+      return 0.2 + Math.max(0, big) * 0.28;
+    };
+    for (let z = 0.1; z < 1.98; z += 0.26) {
       for (const sx of [-1, 1]) {
-        const t = cone(0.07, 0.26, this.mats.tooth, 8);
-        t.position.set(sx * (0.4 - i * 0.012), -0.26 - Math.sin(i * 0.4) * 0.02, 0.85 + i * 0.25);
+        const len = toothAt(z);
+        const t = cone(0.075, len, this.mats.tooth, 8);
+        t.position.set(sx * (skullR(z) * skullSquashX(z) - 0.07), toothLine - len * 0.35, z);
         t.rotation.x = Math.PI;
         head.add(t);
       }
     }
 
+    // ---- lower jaw ---------------------------------------------------------
     const jaw = new THREE.Group();
-    jaw.position.set(0, -0.28, 0.42);
+    jaw.position.set(0, toothLine - 0.12, -0.45);
     head.add(jaw);
     this.jaw = jaw;
-    const jawM = ellipsoid(0.42, 0.21, 0.92, this.mats.skin, 18);
-    jawM.position.set(0, -0.08, 0.92);
-    jaw.add(jawM);
-    const chin = ellipsoid(0.3, 0.17, 0.3, this.mats.skin, 14);
-    chin.position.set(0, -0.05, 1.75);
-    jaw.add(chin);
-    const tongue = ellipsoid(0.24, 0.07, 0.52, this.mats.tongue, 14);
-    tongue.position.set(0, 0.08, 0.95);
+
+    const jawR = makeProfile([
+      { z: 0, v: 0.2 }, { z: 0.3, v: 0.68 }, { z: 0.9, v: 0.62 },
+      { z: 1.6, v: 0.52 }, { z: 2.1, v: 0.38 }, { z: 2.45, v: 0.12 },
+    ]);
+    const jawMesh = new THREE.Mesh(tubeAlongZ({
+      zStart: 0, zEnd: 2.45, rings: 28, radial: 16,
+      radius: jawR,
+      squash: () => ({ x: 0.86, y: 0.5 }),
+      center: () => -0.1,
+    }), this.mats.skin);
+    jawMesh.castShadow = true;
+    jaw.add(jawMesh);
+
+    const tongue = ellipsoid(0.26, 0.07, 0.7, this.mats.tongue, 14);
+    tongue.position.set(0, 0.08, 1.0);
     jaw.add(tongue);
-    for (let i = 0; i < 6; i++) {
+    for (let z = 0.45; z < 2.2; z += 0.27) {
       for (const sx of [-1, 1]) {
-        const t = cone(0.065, 0.26, this.mats.tooth, 8);
-        t.position.set(sx * 0.34, 0.1, 0.5 + i * 0.26);
+        const len = toothAt(z) * 0.8;
+        const t = cone(0.065, len, this.mats.tooth, 8);
+        t.position.set(sx * (jawR(z) * 0.78), 0.05 + len * 0.3, z);
         jaw.add(t);
       }
     }
 
     this.mouthAnchor = new THREE.Object3D();
-    this.mouthAnchor.position.set(0, -0.08, 2.6);
+    this.mouthAnchor.position.set(0, toothLine - 0.05, 2.2);
     head.add(this.mouthAnchor);
 
     // ---- dorsal ridge ------------------------------------------------------
@@ -226,69 +268,89 @@ export class Rex {
       bone.add(sp);
     });
 
-    // ---- legs --------------------------------------------------------------
+    // ---- legs: the massive drumsticks a tyrannosaur walks on ---------------
     this.legs = [];
     for (const sx of [-1, 1]) {
       const hip = new THREE.Group();
-      hip.position.set(sx * 1.02, -0.25, -0.35);
+      hip.position.set(sx * 1.0, -0.15, -0.45);
+      hip.rotation.x = LEG.hip;
       body.add(hip);
-      const hipMass = ellipsoid(0.5, 0.85, 0.88, this.mats.skin, 18);
-      hipMass.position.set(-sx * 0.12, -0.32, -0.05);
-      hip.add(hipMass);
-      const thigh = capsule(0.52, 0.55, this.mats.skin, 16);
-      thigh.position.set(0, -0.72, 0.02);
+
+      const thigh = ellipsoid(0.7, 1.05, 0.92, this.mats.skin, 20);
+      thigh.position.set(sx * 0.1, -0.62, 0.02);
       hip.add(thigh);
+      const thighLow = capsule(0.44, 0.5, this.mats.skin, 16);
+      thighLow.position.set(sx * 0.1, -1.32, 0);
+      hip.add(thighLow);
 
       const knee = new THREE.Group();
-      knee.position.y = -1.3;
+      knee.position.set(sx * 0.1, -1.7, 0);
+      knee.rotation.x = LEG.knee;
       hip.add(knee);
-      const shin = capsule(0.34, 0.55, this.mats.skin, 14);
-      shin.position.set(0, -0.52, -0.05);
+      const kneeCap = ellipsoid(0.34, 0.34, 0.38, this.mats.skin, 14);
+      knee.add(kneeCap);
+      const shin = capsule(0.3, 0.55, this.mats.skin, 14);
+      shin.position.set(0, -0.52, 0);
       knee.add(shin);
 
       const ankle = new THREE.Group();
       ankle.position.set(0, -1.05, 0);
+      ankle.rotation.x = LEG.ankle;
       knee.add(ankle);
-      const shank = capsule(0.23, 0.42, this.mats.skin, 12);
-      shank.position.set(0, -0.2, 0.05);
+      const hock = ellipsoid(0.24, 0.26, 0.26, this.mats.skin, 12);
+      ankle.add(hock);
+      const shank = capsule(0.2, 0.4, this.mats.skin, 12);
+      shank.position.set(0, -0.3, 0.02);
       ankle.add(shank);
-      const foot = ellipsoid(0.36, 0.19, 0.5, this.mats.skin, 14);
-      foot.position.set(0, -0.44, 0.2);
+      const foot = ellipsoid(0.32, 0.17, 0.44, this.mats.skin, 14);
+      foot.position.set(0, -0.58, 0.2);
       ankle.add(foot);
       for (let c = -1; c <= 1; c++) {
-        const toe = capsule(0.14, 0.26, this.mats.skin, 10);
+        const toe = capsule(0.13, 0.3, this.mats.skin, 10);
         toe.rotation.x = Math.PI / 2;
-        toe.position.set(c * 0.24, -0.46, 0.56);
+        toe.position.set(c * 0.23, -0.6, 0.54);
         ankle.add(toe);
-        const claw = cone(0.075, 0.24, this.mats.tooth, 8);
-        claw.rotation.x = Math.PI / 2 + 0.15;
-        claw.position.set(c * 0.24, -0.46, 0.84);
+        const claw = cone(0.075, 0.26, this.mats.tooth, 8);
+        claw.rotation.x = Math.PI / 2 + 0.2;
+        claw.position.set(c * 0.23, -0.62, 0.82);
         ankle.add(claw);
       }
       this.legs.push({ hip, knee, ankle, sx });
     }
 
-    // ---- arms --------------------------------------------------------------
+    // ---- arms: small, but planted on the outside of the chest --------------
     this.arms = [];
     for (const sx of [-1, 1]) {
       const arm = new THREE.Group();
-      arm.position.set(sx * 0.95, 0.15, 2.0);
-      body.add(arm);
-      const upper = capsule(0.16, 0.5, this.mats.skin, 10);
-      upper.position.y = -0.35;
+      arm.position.set(sx * 0.9, -0.22, 0.15);
+      this.chest.add(arm);
+
+      const shoulder = ellipsoid(0.27, 0.27, 0.3, this.mats.skin, 14);
+      arm.add(shoulder);
+      const upper = capsule(0.19, 0.46, this.mats.skin, 12);
+      upper.position.set(sx * 0.06, -0.38, 0.05);
       arm.add(upper);
-      const fore = capsule(0.13, 0.42, this.mats.skin, 10);
-      fore.position.set(0, -0.9, 0.16);
-      fore.rotation.x = -0.4;
-      arm.add(fore);
+
+      const elbow = new THREE.Group();
+      elbow.position.set(sx * 0.06, -0.68, 0.05);
+      arm.add(elbow);
+      const fore = capsule(0.155, 0.38, this.mats.skin, 12);
+      fore.position.set(0, -0.28, 0.12);
+      fore.rotation.x = -0.55;
+      elbow.add(fore);
+      const hand = ellipsoid(0.15, 0.13, 0.17, this.mats.skin, 12);
+      hand.position.set(0, -0.52, 0.29);
+      elbow.add(hand);
       for (let c = 0; c < 2; c++) {
-        const claw = cone(0.055, 0.26, this.mats.tooth, 8);
-        claw.position.set(-0.08 + c * 0.16, -1.22, 0.35);
-        claw.rotation.x = 1.25;
-        arm.add(claw);
+        const claw = cone(0.055, 0.3, this.mats.tooth, 8);
+        claw.position.set((c ? 0.09 : -0.09) * 1, -0.6, 0.44);
+        claw.rotation.x = 1.15;
+        elbow.add(claw);
       }
-      arm.rotation.x = 0.45;
-      this.arms.push(arm);
+
+      arm.rotation.set(0.45, 0, sx * 0.26);
+      elbow.rotation.x = -0.5;
+      this.arms.push({ arm, elbow, sx });
     }
 
     // ---- soft contact shadow ------------------------------------------------
@@ -312,7 +374,7 @@ export class Rex {
   }
 
   resetPose() {
-    this.body.rotation.set(0, 0, 0);
+    this.body.rotation.set(POSE.body, 0, 0);
     this.body.position.set(0, HIP_Y, 0);
     this.jaw.rotation.x = 0.05;
     for (const t of this.tail) t.rotation.set(0, 0, 0);
@@ -451,14 +513,14 @@ export class Rex {
       const off = leg.sx > 0 ? 0 : Math.PI;
       const sw = Math.sin(p + off);
       const lift = Math.max(0, Math.sin(p + off + 0.6));
-      leg.hip.rotation.x = sw * 0.52 * stride + (this.grounded ? 0 : -0.5);
-      leg.knee.rotation.x = -lift * 0.9 * stride - 0.1 + (this.grounded ? 0 : 0.7);
-      leg.ankle.rotation.x = lift * 0.5 * stride + 0.08;
+      leg.hip.rotation.x = LEG.hip + sw * 0.5 * stride + (this.grounded ? 0 : -0.45);
+      leg.knee.rotation.x = LEG.knee + lift * 0.7 * stride + (this.grounded ? 0 : 0.5);
+      leg.ankle.rotation.x = LEG.ankle - lift * 0.45 * stride;
     }
 
     const bob = Math.sin(p * 2) * 0.09 * stride;
     body.position.y = HIP_Y + bob + (this.grounded ? 0 : 0.15);
-    body.rotation.x = 0.02 + stride * 0.1 + Math.sin(p * 2 + 1) * 0.02;
+    body.rotation.x = POSE.body + stride * 0.16 + Math.sin(p * 2 + 1) * 0.02;
     body.rotation.z = Math.sin(p) * 0.05 * stride;
     body.rotation.y = Math.sin(p) * 0.05 * stride;
 
@@ -488,9 +550,11 @@ export class Rex {
       t.rotation.z = Math.sin(p - i * 0.4) * 0.04;
     }
 
-    for (let i = 0; i < this.arms.length; i++) {
-      this.arms[i].rotation.x = 0.45 + Math.sin(p + i * 2) * 0.16 * stride;
-      this.arms[i].rotation.z = (i ? -1 : 1) * 0.14;
+    for (const a of this.arms) {
+      const swing = Math.sin(p + (a.sx > 0 ? 0 : Math.PI)) * 0.22 * stride;
+      a.arm.rotation.x = 0.45 + swing;
+      a.arm.rotation.z = a.sx * (0.22 + Math.sin(p * 2) * 0.05 * stride);
+      a.elbow.rotation.x = -0.5 - Math.max(0, swing) * 0.6;
     }
 
     let jawOpen = 0.05 + Math.sin(this.phase * 0.8) * 0.02;

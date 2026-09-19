@@ -12,8 +12,12 @@ export class Input {
     this.tail = false;
     this.fire = false;               // held
     this.pointerLocked = false;
-    this.touch = !!(navigator.maxTouchPoints > 0);
+    this.hasTouch = !!(navigator.maxTouchPoints > 0) || 'ontouchstart' in window;
+    this.touchActive = false;      // true once the player actually uses touch
+    this.onModeChange = null;      // host swaps the on-screen controls
     this._stick = null;
+    this._touchFire = false;
+    this._touchSprint = false;
 
     this._bindKeyboard();
     this._bindMouse();
@@ -25,6 +29,7 @@ export class Input {
       if (e.repeat) return;
       const k = e.code;
       this.keys.add(k);
+      this._setMode(false);
       if (k === 'Space') { this.jump = true; e.preventDefault(); }
       if (k === 'KeyJ') this.bite = true;
       if (k === 'KeyK') this.tail = true;
@@ -56,8 +61,14 @@ export class Input {
     });
   }
 
+  _setMode(touch) {
+    if (this.touchActive === touch) return;
+    this.touchActive = touch;
+    this.onModeChange?.(touch);
+  }
+
   requestLock() {
-    if (this.touch) return;
+    if (this.touchActive) return;
     this.canvas.requestPointerLock?.();
   }
 
@@ -82,6 +93,7 @@ export class Input {
     };
 
     pad.addEventListener('touchstart', (e) => {
+      this._setMode(true);
       for (const t of e.changedTouches) {
         const el = document.elementFromPoint(t.clientX, t.clientY);
         const btn = el?.closest?.('[data-act]');
@@ -91,9 +103,9 @@ export class Input {
           btn.classList.add('down');
           if (act === 'bite') this.bite = true;
           if (act === 'tail') this.tail = true;
-          if (act === 'fire') this.fire = true;
+          if (act === 'fire') this._touchFire = true;
           if (act === 'jump') this.jump = true;
-          if (act === 'sprint') this.sprint = !this.sprint;
+          if (act === 'sprint') this._touchSprint = !this._touchSprint;
         } else if (t.clientX < innerWidth * 0.45 && this._stick === null) {
           this._stick = t.identifier;
           active.set(t.identifier, 'stick');
@@ -126,7 +138,7 @@ export class Input {
         if (kind === 'stick') {
           this._stick = null; this.move.x = 0; this.move.y = 0;
           knob.style.transform = 'translate(0,0)';
-        } else if (kind === 'fire') this.fire = false;
+        } else if (kind === 'fire') this._touchFire = false;
         if (kind && kind !== 'stick' && kind !== 'look') {
           document.querySelectorAll(`[data-act="${kind}"]`).forEach((b) => b.classList.remove('down'));
         }
@@ -138,22 +150,21 @@ export class Input {
 
   // Called once per frame by the game before reading state.
   sample() {
-    if (!this.touch || this._stick === null) {
-      const k = this.keys;
-      let x = 0, y = 0;
-      if (k.has('KeyW') || k.has('ArrowUp')) y += 1;
-      if (k.has('KeyS') || k.has('ArrowDown')) y -= 1;
-      if (k.has('KeyD') || k.has('ArrowRight')) x += 1;
-      if (k.has('KeyA') || k.has('ArrowLeft')) x -= 1;
-      const len = Math.hypot(x, y);
-      if (len > 0) { x /= len; y /= len; }
-      if (!this.touch) { this.move.x = x; this.move.y = y; }
-      else if (this._stick === null && len > 0) { this.move.x = x; this.move.y = y; }
-    }
-    if (!this.touch) {
-      this.sprint = this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
-      this.fire = this.keys.has('KeyF') || this.keys.has('KeyL') || this._mouseFire === true;
-    }
+    if (this.scripted) return;      // automated tests drive the fields directly
+    const k = this.keys;
+    let x = 0, y = 0;
+    if (k.has('KeyW') || k.has('ArrowUp')) y += 1;
+    if (k.has('KeyS') || k.has('ArrowDown')) y -= 1;
+    if (k.has('KeyD') || k.has('ArrowRight')) x += 1;
+    if (k.has('KeyA') || k.has('ArrowLeft')) x -= 1;
+    const len = Math.hypot(x, y);
+    if (len > 0) { x /= len; y /= len; }
+
+    // the joystick wins while a finger is on it, otherwise the keyboard does
+    if (this._stick === null) { this.move.x = x; this.move.y = y; }
+
+    this.sprint = k.has('ShiftLeft') || k.has('ShiftRight') || this._touchSprint;
+    this.fire = k.has('KeyF') || k.has('KeyL') || this._mouseFire === true || this._touchFire;
   }
 
   consumeLook() {
