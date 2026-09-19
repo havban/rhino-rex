@@ -10,6 +10,7 @@ export class Input {
     this.jump = false;               // edge-triggered, cleared by consumer
     this.bite = false;
     this.tail = false;
+    this.fireball = false;
     this.fire = false;               // held
     this.pointerLocked = false;
     this.hasTouch = !!(navigator.maxTouchPoints > 0) || 'ontouchstart' in window;
@@ -33,10 +34,11 @@ export class Input {
       if (k === 'Space') { this.jump = true; e.preventDefault(); }
       if (k === 'KeyJ') this.bite = true;
       if (k === 'KeyK') this.tail = true;
+      if (k === 'KeyR' || k === 'KeyE') this.fireball = true;
       if (['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k)) e.preventDefault();
     });
     addEventListener('keyup', (e) => this.keys.delete(e.code));
-    addEventListener('blur', () => { this.keys.clear(); this.fire = false; });
+    addEventListener('blur', () => { this.keys.clear(); this.fire = false; this._touchFire = false; });
   }
 
   _bindMouse() {
@@ -124,6 +126,7 @@ export class Input {
           btn.classList.add('down');
           if (act === 'bite') this.bite = true;
           if (act === 'tail') this.tail = true;
+          if (act === 'ball') this.fireball = true;
           if (act === 'fire') this._touchFire = true;
           if (act === 'jump') this.jump = true;
           if (act === 'sprint') this._touchSprint = !this._touchSprint;

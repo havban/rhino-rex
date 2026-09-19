@@ -1,6 +1,6 @@
 // Rhino Rex — game bootstrap, loop, waves and combat resolution.
 import * as THREE from 'three';
-import { REX, ATTACK, WAVES, WORLD, CAMERA, RHINO } from './config.js';
+import { REX, ATTACK, WAVES, WORLD, CAMERA, RHINO, FIREBALL, BLOOD } from './config.js';
 import { World } from './world.js';
 import { Rex } from './rex.js';
 import { Rhino, spawnRing } from './rhino.js';
@@ -8,6 +8,8 @@ import { FX } from './fx.js';
 import { Input } from './input.js';
 import { ChaseCamera } from './camera.js';
 import { Audio } from './audio.js';
+import { Fireball } from './fireball.js';
+import * as Scores from './scores.js';
 
 const $ = (id) => document.getElementById(id);
 const clamp = THREE.MathUtils.clamp;
@@ -18,6 +20,7 @@ class Game {
     this.canvas = $('scene');
     this.quality = localStorage.getItem('rr.quality') || (matchMedia('(max-width: 900px)').matches ? 'medium' : 'high');
     this.soundOn = localStorage.getItem('rr.sound') !== 'off';
+    this.goreOn = localStorage.getItem('rr.gore') !== 'off';
 
     this.coarse = matchMedia('(pointer: coarse)').matches;
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: this.quality !== 'low', powerPreference: 'high-performance' });
@@ -41,6 +44,7 @@ class Game {
     this.fx = new FX(this.scene, this.camera, $('fx-layer'));
     this.audio = new Audio();
     this.audio.setEnabled(this.soundOn);
+    this.fx.gore = this.goreOn;
     this.input = new Input(this.canvas);
     this.input.onModeChange = (touch) => {
       $('touch').classList.toggle('on', touch);
@@ -52,6 +56,7 @@ class Game {
 
     this.rhinos = [];
     this.pickups = [];
+    this.balls = [];
     this.state = 'menu';
     this.wave = 0;
     this.score = 0;
@@ -110,6 +115,28 @@ class Game {
       paintSound();
     });
 
+    const gore = $('btn-gore');
+    const paintGore = () => { gore.textContent = this.goreOn ? '🩸 Darah: ON' : '🩸 Darah: OFF'; };
+    paintGore();
+    gore.addEventListener('click', () => {
+      this.goreOn = !this.goreOn;
+      this.fx.gore = this.goreOn;
+      if (!this.goreOn) this.fx.splats.clear();
+      localStorage.setItem('rr.gore', this.goreOn ? 'on' : 'off');
+      paintGore();
+    });
+
+    $('btn-scores').addEventListener('click', () => this.showScores());
+    $('btn-go-scores').addEventListener('click', () => this.showScores());
+    $('btn-scores-close').addEventListener('click', () => $('scores').classList.add('hidden'));
+    $('btn-scores-clear').addEventListener('click', () => {
+      Scores.clear();
+      this.renderScores($('score-table'));
+      this._paintBest();
+    });
+    $('btn-save-score').addEventListener('click', () => this.saveScore());
+    $('go-name').addEventListener('keydown', (e) => { if (e.code === 'Enter') this.saveScore(); });
+
     const q = $('sel-quality');
     q.value = this.quality;
     q.addEventListener('change', () => {
@@ -125,10 +152,55 @@ class Game {
       if (e.code === 'Enter' && (this.state === 'menu' || this.state === 'dead')) this.start();
     });
 
-    $('best-menu').textContent = this.best.toLocaleString('id-ID');
+    this._paintBest();
 
     const rotate = $('rotate');
     rotate?.addEventListener('click', () => rotate.classList.add('dismissed'));
+  }
+
+  _paintBest() {
+    const top = Scores.list()[0];
+    this.best = Math.max(Number(localStorage.getItem('rr.best') || 0), top ? top.score : 0);
+    $('best-menu').textContent = this.best.toLocaleString('id-ID');
+  }
+
+  renderScores(host, highlight = -1, limit = Scores.MAX_ENTRIES) {
+    const rows = Scores.list().slice(0, limit);
+    if (!rows.length) {
+      host.innerHTML = '<p class="empty">Belum ada skor tersimpan. Berburulah!</p>';
+      return;
+    }
+    const body = rows.map((e, i) => `
+      <tr class="${i === highlight ? 'me' : ''}">
+        <td class="pos">${i + 1}</td>
+        <td class="nm">${this._esc(e.name)}</td>
+        <td class="num">${e.score.toLocaleString('id-ID')}</td>
+        <td class="num">${e.wave}</td>
+        <td class="num">${e.kills}</td>
+      </tr>`).join('');
+    host.innerHTML = `<table class="stable">
+      <thead><tr><th></th><th>NAMA</th><th class="num">SKOR</th><th class="num">GEL.</th><th class="num">BADAK</th></tr></thead>
+      <tbody>${body}</tbody></table>`;
+  }
+
+  _esc(str) {
+    return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  showScores() {
+    this.renderScores($('score-table'), this._lastRank - 1);
+    $('scores').classList.remove('hidden');
+  }
+
+  saveScore() {
+    const name = $('go-name').value.trim() || 'Pemburu';
+    Scores.rememberName(name);
+    this._lastRank = Scores.add({ name, score: this.score, wave: Math.max(1, this.wave), kills: this.kills });
+    this._pendingScore = false;
+    $('go-entry').classList.add('hidden');
+    this.renderScores($('go-table'), this._lastRank - 1, 5);
+    this._paintBest();
+    this.audio.pickup();
   }
 
   _resize() {
@@ -173,6 +245,10 @@ class Game {
     this.rhinos.length = 0;
     for (const p of this.pickups) this.scene.remove(p.mesh);
     this.pickups.length = 0;
+    for (const ball of this.balls) ball.dispose();
+    this.balls.length = 0;
+    this.fx.splats.clear();
+    this.rex.cooldown.fireball = 0;
 
     this.rex.hp = REX.maxHp;
     this.rex.fire = REX.maxFire;
@@ -196,6 +272,7 @@ class Game {
     $('menu').classList.add('hidden');
     $('gameover').classList.add('hidden');
     $('pause').classList.add('hidden');
+    $('scores').classList.add('hidden');
     $('hud').classList.remove('hidden');
     if (this.input.touchActive) this.wantFullscreen = true;
     this._goFullscreen();
@@ -249,6 +326,21 @@ class Game {
     $('go-wave').textContent = String(Math.max(1, this.wave));
     $('go-kills').textContent = String(this.kills);
     $('go-best').textContent = this.best.toLocaleString('id-ID');
+
+    this._pendingScore = Scores.qualifies(this.score);
+    this._lastRank = 0;
+    const entry = $('go-entry');
+    if (this._pendingScore) {
+      const provisional = [...Scores.list(), { score: this.score }]
+        .sort((a, b) => b.score - a.score)
+        .findIndex((e) => e.score === this.score) + 1;
+      $('go-rank').textContent = String(provisional);
+      $('go-name').value = Scores.lastName();
+      entry.classList.remove('hidden');
+    } else {
+      entry.classList.add('hidden');
+    }
+    this.renderScores($('go-table'), -1, 5);
     $('gameover').classList.remove('hidden');
     document.exitPointerLock?.();
   }
@@ -294,7 +386,7 @@ class Game {
       const opts = { knock: to, knockStrength: cfg.knockback };
       if (type === 'tail') opts.stun = cfg.stun;
       const dealt = r.takeDamage(cfg.damage, opts);
-      this._registerHit(r, dealt, type);
+      this._registerHit(r, dealt, type, to);
       hits++;
     }
     if (type === 'tail') {
@@ -315,6 +407,77 @@ class Game {
       if (d2 < bd) { bd = d2; best = r; }
     }
     return best ? Math.atan2(best.pos.x - this.rex.pos.x, best.pos.z - this.rex.pos.z) : null;
+  }
+
+  /**
+   * Where the fireball should land: the rhino you are roughly facing, or a
+   * point on the ground ahead, pushed further out as you aim higher.
+   */
+  _ballTarget(fwd) {
+    let best = null, bd = 60 * 60;
+    for (const r of this.livingRhinos()) {
+      const to = r.pos.clone().sub(this.rex.pos).setY(0);
+      const d2 = to.lengthSq();
+      if (d2 > bd || d2 < 1) continue;
+      if (to.normalize().dot(fwd) < 0.8) continue;      // only what is in front
+      bd = d2; best = r;
+    }
+    if (best) {
+      const lead = Math.sqrt(bd) / FIREBALL.speed;      // lead a charging target
+      return best.pos.clone().addScaledVector(best.vel, lead * 0.8).setY(1.7 * best.scaleF);
+    }
+    const dist = clamp(30 - this.chase.pitch * 20, 14, 58);
+    return this.rex.pos.clone().addScaledVector(fwd, dist).setY(1.6);
+  }
+
+  _spawnBall() {
+    const origin = this.rex.mouthPosition;
+    const fwd = this.rex.forward;
+    const target = this._ballTarget(fwd);
+
+    // solve the arc: horizontal speed is fixed, vertical is whatever lands it
+    const flat = new THREE.Vector3(target.x - origin.x, 0, target.z - origin.z);
+    const t = Math.max(flat.length() / FIREBALL.speed, 0.12);
+    const vy = (target.y - origin.y - 0.5 * FIREBALL.gravity * t * t) / t;
+    const vel = new THREE.Vector3(flat.x / t, clamp(vy, -14, 22), flat.z / t);
+
+    this.balls.push(new Fireball(this.scene, origin, vel));
+    this.fx.impact(origin, 0xffb23d, 18);
+    this.fx.shake(0.3);
+  }
+
+  _updateBalls(dt) {
+    for (let i = this.balls.length - 1; i >= 0; i--) {
+      const ball = this.balls[i];
+      this.fx.trail(ball.pos, dt);
+      const hit = ball.update(dt, this.rhinos, this.world);
+      if (!hit) continue;
+      if (!hit.fizzle) this._explode(hit.pos, hit.direct);
+      ball.dispose();
+      this.balls.splice(i, 1);
+    }
+  }
+
+  _explode(pos, direct) {
+    this.fx.blast(pos);
+    this.fx.shake(1.1);
+    this.audio.stomp();
+    this.audio.crunch();
+    for (const r of this.livingRhinos()) {
+      const d = r.pos.distanceTo(pos) - r.radius;
+      if (d > FIREBALL.splash) continue;
+      const falloff = 1 - Math.max(0, d) / FIREBALL.splash;
+      let dmg = FIREBALL.splashDamage * falloff;
+      if (r === direct) dmg += FIREBALL.damage;
+      const knock = r.pos.clone().sub(pos).setY(0).normalize();
+      const dealt = r.takeDamage(dmg, {
+        knock, knockStrength: FIREBALL.knockback * falloff,
+        burn: FIREBALL.burn, stun: 0.5 + falloff * 0.6,
+      });
+      this.fx.number(r.pos.clone().setY(4.4 * r.scaleF), Math.round(dealt), 'burn');
+      this.fx.blood(r.pos.clone().setY(2.0 * r.scaleF), knock, BLOOD.dropsPerHit, 1.2);
+      if (!r.alive) this._onKill(r, 'fireball');
+    }
   }
 
   // Grit kicked up by the pivoting feet while the body spins.
@@ -352,15 +515,17 @@ class Game {
       const dealt = r.takeDamage(cfg.dps * dt, { burn: { time: cfg.burnTime, dps: cfg.burnDps } });
       this._fireAccum = (this._fireAccum || 0) + dealt;
       r._fireTally = (r._fireTally || 0) + dealt;
+      if (Math.random() < dt * 3) this.fx.blood(r.pos.clone().setY(1.8 * r.scaleF), null, 2, 0.6);
       if (r._fireTally > 22) { this.fx.number(r.pos.clone().setY(4.4 * r.scaleF), Math.round(r._fireTally), 'burn'); r._fireTally = 0; }
       if (!r.alive) this._onKill(r, 'fire');
     }
   }
 
-  _registerHit(r, dealt, type) {
+  _registerHit(r, dealt, type, dir = null) {
     const cls = type === 'bite' ? 'bite' : type === 'tail' ? 'tail' : '';
     this.fx.number(r.pos.clone().setY(4.4 * r.scaleF), Math.round(dealt), cls);
     this.fx.impact(r.pos.clone().setY(2.4 * r.scaleF), type === 'bite' ? 0xff88a0 : 0xffe08a, type === 'bite' ? 16 : 10);
+    this.fx.blood(r.pos.clone().setY(2.2 * r.scaleF), dir, type === 'bite' ? BLOOD.dropsPerHit + 3 : BLOOD.dropsPerHit, type === 'bite' ? 1.15 : 0.9);
     if (!r.alive) this._onKill(r, type);
   }
 
@@ -373,6 +538,7 @@ class Game {
     const mult = 1 + Math.min(this.rex.combo - 1, 9) * 0.1;
     this.score += Math.round(r.cfg.score * mult);
     this.fx.impact(r.pos.clone().setY(2.2 * r.scaleF), 0xffc247, 26);
+    this.fx.blood(r.pos.clone().setY(2.2 * r.scaleF), null, Math.round(BLOOD.dropsPerKill * r.scaleF), 1.3);
     this.fx.dustBurst(r.pos.clone().setY(0.4), 12, r.scaleF);
     this.fx.number(r.pos.clone().setY(5.2 * r.scaleF), `+${Math.round(r.cfg.score * mult)}`, 'score');
     this.fx.shake(r.cfg.boss ? 1.4 : 0.35);
@@ -440,10 +606,17 @@ class Game {
     if (input.consume('tail') && this.rex.startAttack('tail', this._aimYaw(ATTACK.tail.aimRange))) {
       this.audio.tail();
     }
+    if (input.consume('fireball') && this.rex.canFireball() && this.rex.startAttack('fireball')) {
+      this.rex.fire -= FIREBALL.cost;
+      this.rex.cooldown.fireball = FIREBALL.cooldown;
+      this.audio.roar();
+    }
     this._spinDust(dt);
+    this._updateBalls(dt);
 
     const hitEvent = this.rex.update(dt, input, this.chase.yaw, this.world);
-    if (hitEvent) this.coneHit(hitEvent);
+    if (hitEvent === 'fireball') this._spawnBall();
+    else if (hitEvent) this.coneHit(hitEvent);
     if (this.rex.breathing) this.fireTick(dt);
 
     // ---- enemies ----
@@ -518,11 +691,13 @@ class Game {
 
     const bite = String(1 - this.rex.cooldown.bite / ATTACK.bite.cooldown);
     const tail = String(1 - this.rex.cooldown.tail / ATTACK.tail.cooldown);
-    for (const [id, v] of [['cd-bite', bite], ['cd-tail', tail], ['cd-fire', String(fire)],
-                           ['tb-bite', bite], ['tb-tail', tail], ['tb-fire', String(fire)]]) {
+    const ball = String(Math.min(1 - this.rex.cooldown.fireball / FIREBALL.cooldown, this.rex.fire / FIREBALL.cost));
+    for (const [id, v] of [['cd-bite', bite], ['cd-tail', tail], ['cd-fire', String(fire)], ['cd-ball', ball],
+                           ['tb-bite', bite], ['tb-tail', tail], ['tb-fire', String(fire)], ['tb-ball', ball]]) {
       $(id)?.style.setProperty('--cd', v);
     }
     $('cd-fire').classList.toggle('empty', this.rex.fire <= REX.fireMinToStart);
+    $('cd-ball').classList.toggle('empty', !this.rex.canFireball());
   }
 
   _loop() {

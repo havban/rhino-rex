@@ -49,6 +49,14 @@ export const ATTACK = {
     stun: 1.1,
     aimRange: 15,             // look this far for something to turn towards
   },
+  fireball: {
+    damage: 0,            // the projectile carries the damage (see FIREBALL)
+    range: 0,
+    halfAngle: 0,
+    cooldown: 3.0,
+    windup: 0.26,
+    active: 0.12,
+  },
   fire: {
     dps: 42,              // damage per second inside the cone
     range: 22,
@@ -56,6 +64,29 @@ export const ATTACK = {
     burnDps: 11,
     burnTime: 3.2,
   },
+};
+
+export const FIREBALL = {
+  damage: 58,             // direct hit
+  splashDamage: 34,       // at the centre of the blast, falls off to zero at `splash`
+  splash: 7.0,
+  speed: 46,
+  gravity: -11,           // gentle arc, so you lead distant targets
+  life: 3.2,
+  radius: 0.75,
+  cost: 40,               // drains the same meter as the breath
+  cooldown: 3.0,
+  burn: { time: 3.6, dps: 13 },
+  knockback: 18,
+};
+
+export const BLOOD = {
+  dropsPerHit: 7,
+  dropsPerKill: 22,
+  splatMax: 72,           // ground splats kept alive at once
+  splatLife: 26,          // seconds before a splat has faded away
+  color: 0xb3121f,
+  colorDark: 0x9c1421,    // splat tint on the grass — must still read as red
 };
 
 export const RHINO = {

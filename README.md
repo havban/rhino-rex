@@ -12,11 +12,14 @@ Semburkan api, gigit, dan sabetkan ekor untuk bertahan gelombang demi gelombang.
 - **Sudut pandang orang ketiga** dari belakang T-Rex. Kamera mengekor sendiri ke belakang
   setelah kamu berhenti menggeser layar — makin cepat saat berlari — tapi geseran bebas
   tetap bisa memutar sudut pandang ke mana pun, termasuk dari depan atau dari atas.
-- **Tiga serangan**
+- **Empat serangan**
   - 🔥 **Semburan api** — kerucut api jarak jauh, memberi efek terbakar (damage over time).
   - 🦷 **Gigitan** — cepat, kerusakan besar di depan moncong.
   - 🌀 **Pukulan ekor** — T-Rex otomatis berputar menghadap badak terdekat, memutar badan
     satu putaran penuh sehingga ekornya menyapu 360°, lalu kembali ke arah semula.
+  - ☄️ **Bola api** — lemparan melengkung yang meledak: kerusakan langsung + ledakan area
+    yang melempar dan membakar. Membidik sendiri ke badak yang ada di depanmu, memakai
+    40 meteran api, jeda 3 detik.
 - **Badak yang menyeruduk** — mereka mengais tanah dulu (aba-aba), lalu menerjang lurus.
   Menepilah; kalau mereka menabrak pohon atau batu mereka pusing dan menerima kerusakan ekstra.
 - **Empat jenis badak**: anakan yang gesit, banteng, badak berbaju zirah, dan **Matriark** raksasa
@@ -24,7 +27,12 @@ Semburkan api, gigit, dan sabetkan ekor untuk bertahan gelombang demi gelombang.
 - **Tema cerah**: padang rumput hijau, langit biru, bunga warna-warni, awan, dan perbukitan.
 - **Model halus**: T-Rex bertulang (SkinnedMesh) dengan tengkorak dalam bergigi, tangan
   kecil bercakar, dan kaki digitigrade; badak bertubuh tong dengan dua tanduk.
-- Gelombang tanpa akhir, skor + combo, buah semangka penyembuh, skor terbaik tersimpan lokal.
+- Gelombang tanpa akhir, skor + combo, buah semangka penyembuh.
+- **🏆 Papan skor** sepuluh besar dengan nama pemain. Disimpan di `localStorage`, jadi
+  **hanya per perangkat** — tidak ada server, tidak ada akun, tidak ada data yang dikirim
+  ke mana pun. (Papan skor global butuh backend; belum ada.)
+- **🩸 Tetesan darah** yang memercik dari badak dan meninggalkan noda di rumput, memudar
+  perlahan. Bisa dimatikan lewat tombol *Darah: ON/OFF* di menu.
 - **Responsif**: satu build jalan di ponsel, tablet, dan laptop. Kontrol sentuh muncul
   otomatis di layar sentuh (dan laptop layar-sentuh tetap bisa pakai keyboard + mouse),
   HUD merapat di layar pendek, bidang pandang melebar di mode potret, resolusi render
@@ -41,6 +49,7 @@ Semburkan api, gigit, dan sabetkan ekor untuk bertahan gelombang demi gelombang.
 | Gigit | Klik kiri / `J` |
 | Semburan api | Klik kanan (tahan) / `F` |
 | Pukulan ekor | Klik tengah / `K` |
+| Bola api | `R` atau `E` |
 | Jeda | `Esc`, atau tombol **II** di tengah atas layar |
 
 Di ponsel/tablet: joystick di kiri, geser separuh layar kanan untuk memutar kamera,
@@ -81,6 +90,8 @@ js/rex.js           # model + animasi + gerak T-Rex
 js/rhino.js         # model + AI badak (kejar → aba-aba → seruduk → pusing)
 js/world.js         # arena, langit, pohon, batu, rumput
 js/geom.js          # pembangun permukaan halus (sapuan tabung, elipsoid, kapsul)
+js/fireball.js      # proyektil bola api (lintasan melengkung + ledakan)
+js/scores.js        # papan skor lokal (localStorage)
 js/fx.js            # partikel, angka kerusakan, guncangan kamera
 js/camera.js        # kamera orang ketiga
 js/input.js         # keyboard/mouse/sentuh

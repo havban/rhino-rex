@@ -1,6 +1,6 @@
 // The player: a smooth, skinned T-Rex built from swept surfaces, not boxes.
 import * as THREE from 'three';
-import { REX, ATTACK, WORLD, COLORS } from './config.js';
+import { REX, ATTACK, WORLD, COLORS, FIREBALL } from './config.js';
 import { makeProfile, tubeAlongZ, ellipsoid, capsule, cone, skinMaterial } from './geom.js';
 
 const wrapPi = (a) => {
@@ -43,7 +43,7 @@ export class Rex {
     this.speed = 0;
     this.attack = null;
     this.attackYaw = 0;       // visual body twist during the tail spin
-    this.cooldown = { bite: 0, tail: 0 };
+    this.cooldown = { bite: 0, tail: 0, fireball: 0 };
     this.breathing = false;
     this.roar = 0;
     this.hurtFlash = 0;
@@ -449,6 +449,11 @@ export class Rex {
 
   canBreathe() { return this.alive && !this.attack && this.fire > REX.fireMinToStart; }
 
+  canFireball() {
+    return this.alive && !this.attack && !this.breathing
+      && this.cooldown.fireball <= 0 && this.fire >= FIREBALL.cost;
+  }
+
   update(dt, input, camYaw, world) {
     for (const k in this.cooldown) this.cooldown[k] = Math.max(0, this.cooldown[k] - dt);
     this.invuln = Math.max(0, this.invuln - dt);
@@ -610,6 +615,23 @@ export class Rex {
       else if (u < 0.52) { jawOpen = THREE.MathUtils.lerp(1.0, 0.02, (u - 0.32) / 0.2); lunge = 1.0; headPitch += 0.32; neckPitch += 0.32; }
       else { jawOpen = THREE.MathUtils.lerp(0.02, 0.05, (u - 0.52) / 0.48); lunge = THREE.MathUtils.lerp(1.0, 0, (u - 0.52) / 0.48); }
       body.rotation.x += lunge * 0.14;
+    }
+    const spit = this.attack?.type === 'fireball' ? this.attack : null;
+    if (spit) {
+      const cfg = ATTACK.fireball;
+      const u = THREE.MathUtils.clamp(spit.t / spit.dur, 0, 1);
+      const wind = THREE.MathUtils.clamp(spit.t / cfg.windup, 0, 1);
+      if (spit.t < cfg.windup) {
+        neckPitch -= wind * 0.55;                 // rear the head back
+        headPitch -= wind * 0.35;
+        jawOpen = 0.15 + wind * 0.5;
+      } else {
+        const k = THREE.MathUtils.clamp((spit.t - cfg.windup) / (spit.dur - cfg.windup), 0, 1);
+        neckPitch += (1 - k) * 0.45;              // whip it forward
+        headPitch += (1 - k) * 0.5;
+        jawOpen = 1.05 * (1 - k * 0.8);
+        body.rotation.x += (1 - k) * 0.1;
+      }
     }
     if (this.breathing) {
       jawOpen = 0.9 + Math.sin(this.phase * 18) * 0.06;
