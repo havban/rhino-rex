@@ -1,6 +1,6 @@
 // The player: a smooth, skinned T-Rex built from swept surfaces, not boxes.
 import * as THREE from 'three';
-import { REX, ATTACK, WORLD, COLORS, FIREBALL, SKINS } from './config.js';
+import { REX, ATTACK, WORLD, COLORS, FIREBALL, SKINS, FORMS } from './config.js';
 import { makeProfile, tubeAlongZ, ellipsoid, capsule, cone, skinMaterial } from './geom.js';
 
 const wrapPi = (a) => {
@@ -27,9 +27,11 @@ const HIP_Y = 3.5;
 const LEG = { hip: -0.30, knee: 0.65, ankle: -0.45 };          // height of the hip pivot above the ground
 
 export class Rex {
-  constructor(scene, skin = 'jingga') {
+  constructor(scene, skin = 'jingga', form = 'rex') {
     this.scene = scene;
     this.skin = SKINS[skin] ? skin : 'jingga';
+    this.form = FORMS[form] ? form : 'rex';
+    this.pose = { ...POSE, ...(FORMS[this.form].pose || {}) };
     this.pos = new THREE.Vector3(0, 0, 18);
     this.vel = new THREE.Vector3();
     this.yaw = Math.PI;
@@ -67,6 +69,18 @@ export class Rex {
   setSkin(name) {
     if (!SKINS[name] || name === this.skin) return;
     this.skin = name;
+    this._rebuild();
+  }
+
+  /** Same idea for the silhouette: T-Rex, winged, Gojira or Kong. */
+  setForm(name) {
+    if (!FORMS[name] || name === this.form) return;
+    this.form = name;
+    this.pose = { ...POSE, ...(FORMS[name].pose || {}) };
+    this._rebuild();
+  }
+
+  _rebuild() {
     this.scene.remove(this.root);
     this.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
     for (const k in this.mats) this.mats[k].dispose();
@@ -84,6 +98,8 @@ export class Rex {
     root.add(body);
     this.body = body;
 
+    const f = FORMS[this.form] || FORMS.rex;
+    this.f = f;
     const sk = SKINS[this.skin] || SKINS.jingga;
     const skin = sk.body, belly = sk.belly, stripe = sk.stripe;
     this.mats = {
@@ -95,6 +111,8 @@ export class Rex {
       eye: new THREE.MeshPhongMaterial({ color: sk.eye, shininess: 70 }),
       pupil: new THREE.MeshBasicMaterial({ color: sk.pupil }),
       tongue: skinMaterial(sk.tongue),
+      plate: skinMaterial(sk.plate || sk.belly, { shininess: 26 }),
+      wing: skinMaterial(sk.wing || sk.stripe, { shininess: 10 }),
     };
 
     // ---- skeleton --------------------------------------------------------
@@ -121,7 +139,8 @@ export class Rex {
 
     this.tail = [];
     parent = hips; z = 0;
-    for (const dz of TAIL_BONES) {
+    for (const raw of TAIL_BONES) {
+      const dz = raw * f.tail;
       const b = new THREE.Bone();
       b.name = `tail${this.tail.length}`;
       b.position.z = -dz;
@@ -138,20 +157,24 @@ export class Rex {
     this._neckRestZ = this.neck1.position.z;
 
     // ---- skinned body surface -------------------------------------------
-    const zTail = -(TAIL_BONES.reduce((a, b) => a + b, 0)) - 0.7;
+    const zTail = -(TAIL_BONES.reduce((a, b) => a + b, 0)) * f.tail - 0.7;
     const zHead = FORWARD_BONES.reduce((a, b) => a + b[1], 0) - 0.15;
+    // Behind the hips the profile has to shrink with the tail, or a stubby
+    // form would wear a full-length tail's worth of control points.
+    const rear = (z) => z * f.tail;
     const radius = makeProfile([
-      { z: zTail, v: 0.10 }, { z: zTail + 0.7, v: 0.24 }, { z: -4.4, v: 0.42 },
-      { z: -3.3, v: 0.60 }, { z: -2.2, v: 0.82 }, { z: -1.1, v: 1.06 },
-      { z: -0.3, v: 1.26 }, { z: 0.35, v: 1.28 }, { z: 1.0, v: 1.20 },
+      { z: zTail, v: 0.10 }, { z: zTail + 0.7 * f.tail, v: 0.24 }, { z: rear(-4.4), v: 0.42 },
+      { z: rear(-3.3), v: 0.60 }, { z: rear(-2.2), v: 0.82 }, { z: rear(-1.1), v: 1.06 },
+      { z: rear(-0.3), v: 1.26 }, { z: 0.35, v: 1.28 }, { z: 1.0, v: 1.20 },
       { z: 1.55, v: 1.12 }, { z: 2.05, v: 1.0 }, { z: 2.5, v: 0.82 },
       { z: 2.95, v: 0.68 }, { z: 3.4, v: 0.62 }, { z: zHead, v: 0.60 },
-    ]);
+    ].map((pt) => ({ z: pt.z, v: pt.v * (pt.z > -0.5 ? f.girth : 1 + (f.girth - 1) * 0.55) })));
     const squashX = makeProfile([
-      { z: zTail, v: 0.95 }, { z: -2, v: 0.90 }, { z: 0.8, v: 0.84 }, { z: 2.6, v: 0.88 }, { z: zHead, v: 0.95 },
+      { z: zTail, v: 0.95 }, { z: rear(-2), v: 0.90 }, { z: 0.8, v: f.ape ? 0.95 : 0.84 },
+      { z: 2.6, v: 0.88 }, { z: zHead, v: 0.95 },
     ]);
     const centerY = makeProfile([
-      { z: zTail, v: 0 }, { z: -2.2, v: 0.06 }, { z: -0.3, v: -0.02 },
+      { z: zTail, v: 0 }, { z: rear(-2.2), v: 0.06 }, { z: rear(-0.3), v: -0.02 },
       { z: 1.0, v: -0.08 }, { z: 1.8, v: -0.1 }, { z: 2.6, v: 0.0 }, { z: zHead, v: 0.06 },
     ]);
     const cBody = new THREE.Color(skin), cBelly = new THREE.Color(belly), cStripe = new THREE.Color(stripe);
@@ -181,7 +204,8 @@ export class Rex {
 
     // ---- head: a deep, narrow theropod skull with a hinged jaw -------------
     const head = new THREE.Group();
-    head.scale.setScalar(1.12);
+    head.scale.setScalar(1.12 * f.head);
+    if (f.ape) head.scale.multiply(new THREE.Vector3(1.16, 1.06, 0.74));   // broad, blunt muzzle
     this.headBone.add(head);
     this.head = head;
 
@@ -210,15 +234,17 @@ export class Rex {
 
     // brow ridge + lacrimal horns: the angry-eyebrow silhouette
     for (const sx of [-1, 1]) {
-      const brow = ellipsoid(0.17, 0.12, 0.34, this.mats.stripe, 14);
-      brow.position.set(sx * 0.46, skullCenter(0.68) + 0.46, 0.68);
+      const brow = ellipsoid(f.ape ? 0.34 : 0.17, f.ape ? 0.2 : 0.12, f.ape ? 0.3 : 0.34, this.mats.stripe, 14);
+      brow.position.set(sx * (f.ape ? 0.34 : 0.46), skullCenter(0.68) + (f.ape ? 0.52 : 0.46), f.ape ? 0.78 : 0.68);
       brow.rotation.z = sx * 0.22;
       brow.rotation.y = sx * -0.12;
       head.add(brow);
-      const hornlet = cone(0.1, 0.26, this.mats.stripe, 8);
-      hornlet.position.set(sx * 0.47, skullCenter(0.78) + 0.54, 0.78);
-      hornlet.rotation.z = sx * 0.5;
-      head.add(hornlet);
+      if (!f.ape) {
+        const hornlet = cone(0.1, 0.26, this.mats.stripe, 8);
+        hornlet.position.set(sx * 0.47, skullCenter(0.78) + 0.54, 0.78);
+        hornlet.rotation.z = sx * 0.5;
+        head.add(hornlet);
+      }
 
       const eye = ellipsoid(0.17, 0.18, 0.15, this.mats.eye, 16);
       eye.position.set(sx * 0.48, skullCenter(0.58) + 0.14, 0.58);
@@ -231,10 +257,21 @@ export class Rex {
       nostril.position.set(sx * 0.12, skullCenter(1.75) + 0.28, 1.75);
       head.add(nostril);
     }
-    // a ridge along the top of the snout
-    const snoutRidge = ellipsoid(0.13, 0.1, 0.7, this.mats.stripe, 12);
-    snoutRidge.position.set(0, skullCenter(1.3) + 0.52, 1.3);
-    head.add(snoutRidge);
+    // a ridge along the top of the snout - an ape gets a muzzle pad instead
+    if (f.ape) {
+      const muzzle = ellipsoid(0.62, 0.42, 0.55, this.mats.belly, 14);
+      muzzle.position.set(0, skullCenter(1.5) + 0.05, 1.5);
+      head.add(muzzle);
+      for (const sx of [-1, 1]) {
+        const ear = ellipsoid(0.1, 0.24, 0.2, this.mats.belly, 10);
+        ear.position.set(sx * 0.9, skullCenter(0.2) + 0.2, 0.15);
+        head.add(ear);
+      }
+    } else {
+      const snoutRidge = ellipsoid(0.13, 0.1, 0.7, this.mats.stripe, 12);
+      snoutRidge.position.set(0, skullCenter(1.3) + 0.52, 1.3);
+      head.add(snoutRidge);
+    }
 
     // upper teeth, biggest in the middle of the jaw
     const toothAt = (z) => {
@@ -287,14 +324,21 @@ export class Rex {
     head.add(this.mouthAnchor);
 
     // ---- dorsal ridge ------------------------------------------------------
-    const ridge = [[this.chest, 0.15], [this.spine, 0.1], [hips, 0.0], [this.tail[0], -0.2], [this.tail[1], -0.3]];
-    ridge.forEach(([bone, dz], i) => {
-      const zz = bone.userData.z + dz;
-      const sp = cone(0.26 - i * 0.03, 0.85 - i * 0.11, this.mats.stripe, 8);
-      sp.position.set(0, centerY(zz) + radius(zz) * 0.9, dz);
-      sp.rotation.x = -0.2;
-      bone.add(sp);
-    });
+    if (f.ridge !== 'none') {
+      const plates = f.ridge === 'plates';
+      const ridge = [[this.chest, 0.15], [this.spine, 0.1], [hips, 0.0], [this.tail[0], -0.2], [this.tail[1], -0.3]];
+      ridge.forEach(([bone, dz], i) => {
+        const zz = bone.userData.z + dz;
+        // Gojira wears broad maple-leaf plates instead of the rex's thorns
+        const sp = plates
+          ? cone(0.82 - i * 0.09, 1.9 - i * 0.2, this.mats.plate, 5)
+          : cone(0.26 - i * 0.03, 0.85 - i * 0.11, this.mats.stripe, 8);
+        sp.position.set(0, centerY(zz) + radius(zz) * 0.9, dz);
+        sp.rotation.x = -0.2;
+        if (plates) sp.scale.z = 0.2;
+        bone.add(sp);
+      });
+    }
 
     // ---- legs: the massive drumsticks a tyrannosaur walks on ---------------
     this.legs = [];
@@ -376,9 +420,66 @@ export class Rex {
         elbow.add(claw);
       }
 
-      arm.rotation.set(0.45, 0, sx * 0.26);
-      elbow.rotation.x = -0.5;
+      arm.scale.setScalar(f.arms);
+      // big arms need their shoulders further out, or they sink into the chest
+      arm.position.x = sx * 0.9 * (0.72 + 0.32 * f.arms);
+      if (f.ape) {
+        arm.position.y = 0.05;
+        arm.rotation.set(0.08, 0, sx * 0.14);     // hanging, knuckles near the ground
+        elbow.rotation.x = -0.22;
+      } else {
+        arm.rotation.set(0.45, 0, sx * 0.26);
+        elbow.rotation.x = -0.5;
+      }
       this.arms.push({ arm, elbow, sx });
+    }
+
+    // ---- wings: a membrane stretched over a leading edge and one finger ----
+    this.wings = [];
+    if (f.wings) {
+      // Spelled out as four points rather than swept, because a wing is a
+      // flat sheet with a swept-back notch, not a surface of revolution.
+      const membrane = (sx) => {
+        const pts = [
+          [0.2 * sx, 0.0, 0.7],     // shoulder, leading edge
+          [4.1 * sx, 0.8, -0.6],    // tip
+          [2.3 * sx, 0.3, -2.2],    // notch between the fingers
+          [0.3 * sx, 0.0, -2.4],    // trailing root, against the ribs
+        ];
+        const tri = sx > 0 ? [0, 1, 2, 0, 2, 3] : [0, 2, 1, 0, 3, 2];
+        const pos = new Float32Array(tri.length * 3);
+        tri.forEach((v, k) => { pos.set(pts[v], k * 3); });
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        g.computeVertexNormals();
+        const m = new THREE.Mesh(g, this.mats.wing);
+        m.castShadow = true;
+        return m;
+      };
+      const strut = (sx, from, to, r) => {
+        const a = new THREE.Vector3(...from), b2 = new THREE.Vector3(...to);
+        const len = a.distanceTo(b2);
+        const bone = capsule(r, Math.max(0.05, len - r * 2), this.mats.skin, 8);
+        bone.position.copy(a).lerp(b2, 0.5);
+        bone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b2.clone().sub(a).normalize());
+        return bone;
+      };
+
+      for (const sx of [-1, 1]) {
+        const wing = new THREE.Group();
+        wing.position.set(sx * 0.85, 0.5, -0.1);
+        this.chest.add(wing);
+        wing.add(membrane(sx));
+        wing.add(strut(sx, [0.2 * sx, 0, 0.7], [4.1 * sx, 0.8, -0.6], 0.14));
+        const outer = new THREE.Group();
+        wing.add(outer);
+        outer.add(strut(sx, [2.2 * sx, 0.4, -0.1], [2.3 * sx, 0.3, -2.2], 0.09));
+        const claw = cone(0.1, 0.5, this.mats.tooth, 7);
+        claw.position.set(sx * 4.2, 0.9, -0.5);
+        claw.rotation.z = sx * -1.2;
+        wing.add(claw);
+        this.wings.push({ wing, outer, sx });
+      }
     }
 
     // ---- soft contact shadow ------------------------------------------------
@@ -394,11 +495,11 @@ export class Rex {
     root.position.copy(this.pos);
     root.updateMatrixWorld(true);
     mesh.bind(new THREE.Skeleton(bones));
-    this.spine.rotation.x = POSE.spine;
-    this.chest.rotation.x = POSE.chest;
-    this.neck1.rotation.x = POSE.neck1;
-    this.neck2.rotation.x = POSE.neck2;
-    this.headBone.rotation.x = POSE.head;
+    this.spine.rotation.x = this.pose.spine;
+    this.chest.rotation.x = this.pose.chest;
+    this.neck1.rotation.x = this.pose.neck1;
+    this.neck2.rotation.x = this.pose.neck2;
+    this.headBone.rotation.x = this.pose.head;
   }
 
   /** Ease a networked player towards the last pose we heard about. */
@@ -426,7 +527,7 @@ export class Rex {
   }
 
   resetPose() {
-    this.body.rotation.set(POSE.body, 0, 0);
+    this.body.rotation.set(this.pose.body, 0, 0);
     this.body.position.set(0, HIP_Y, 0);
     this.jaw.rotation.x = 0.05;
     for (const t of this.tail) t.rotation.set(0, 0, 0);
@@ -615,16 +716,31 @@ export class Rex {
       leg.ankle.rotation.x = LEG.ankle - lift * 0.45 * stride;
     }
 
+    // wings: a lazy idle beat that turns into real flapping off the ground
+    if (this.wings && this.wings.length) {
+      const air = this.grounded ? 0 : 1;
+      const beat = Math.sin(this.phase * (air ? 2.6 : 0.9));
+      for (const w of this.wings) {
+        // tucked up and swept back on the ground; wide open in the air
+        const up = beat * (air ? 0.8 : 0.12);
+        const fold = air ? 0 : 1 - Math.min(stride, 1) * 0.25;
+        w.wing.rotation.z = w.sx * (0.1 + up + fold * 0.7);
+        w.wing.rotation.y = w.sx * (air ? -0.12 : fold * 0.95);
+        w.wing.rotation.x = up * 0.25 - fold * 0.25;
+        w.outer.rotation.z = w.sx * (up * 0.4 + fold * 0.55);
+      }
+    }
+
     const bob = Math.sin(p * 2) * 0.09 * stride;
     body.position.y = HIP_Y + bob + (this.grounded ? 0 : 0.15);
-    body.rotation.x = POSE.body + stride * 0.16 + Math.sin(p * 2 + 1) * 0.02;
+    body.rotation.x = this.pose.body + stride * 0.16 + Math.sin(p * 2 + 1) * 0.02;
     body.rotation.z = Math.sin(p) * 0.05 * stride;
     body.rotation.y = Math.sin(p) * 0.05 * stride;
 
     // spine counter-sway keeps the smooth body feeling alive
-    this.spine.rotation.x = POSE.spine - stride * 0.03;
+    this.spine.rotation.x = this.pose.spine - stride * 0.03;
     this.spine.rotation.y = Math.sin(p) * 0.035 * stride;
-    this.chest.rotation.x = POSE.chest - stride * 0.02;
+    this.chest.rotation.x = this.pose.chest - stride * 0.02;
     this.chest.rotation.y = Math.sin(p + 0.6) * 0.03 * stride;
 
     const whip = this.attack?.type === 'tail' ? this.attack : null;
@@ -632,7 +748,7 @@ export class Rex {
       const t = this.tail[i];
       const k = i / this.tail.length;
       let ry = Math.sin(p - i * 0.55) * (0.04 + 0.06 * stride);
-      let rx = Math.sin(p * 2 - i * 0.5) * 0.035 + (i === 0 ? POSE.tail0 : POSE.tail);
+      let rx = Math.sin(p * 2 - i * 0.5) * 0.035 + (i === 0 ? this.pose.tail0 : this.pose.tail);
       if (whip) {
         const cfg = ATTACK.tail;
         const wind = THREE.MathUtils.clamp(whip.t / cfg.windup, 0, 1);
@@ -694,10 +810,10 @@ export class Rex {
     if (whip) body.rotation.z += Math.sin(whip.t * 7) * 0.12 * whip.dir;
 
     this.jaw.rotation.x = jawOpen;
-    this.neck1.rotation.x = POSE.neck1 + neckPitch * 0.6 - stride * 0.05;
-    this.neck2.rotation.x = POSE.neck2 + neckPitch * 0.4;
+    this.neck1.rotation.x = this.pose.neck1 + neckPitch * 0.6 - stride * 0.05;
+    this.neck2.rotation.x = this.pose.neck2 + neckPitch * 0.4;
     this.neck1.position.z = this._neckRestZ + lunge * 0.55;
-    this.headBone.rotation.x = POSE.head + headPitch;
+    this.headBone.rotation.x = this.pose.head + headPitch;
 
     if (this.hurtFlash > 0) {
       const f = this.hurtFlash;

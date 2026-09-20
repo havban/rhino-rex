@@ -166,10 +166,22 @@ none of it scores, counts as a kill, feeds the combo, or drops a melon. They
 do not block your movement either; only the scenery does. In co-op each client
 runs its own wildlife locally, since nothing about them affects the run.
 
-## T-Rex skins
+## Hunters and skins
 
-Four looks, picked above the start button and remembered in `rr.skin`. Purely
-cosmetic — same size, same reach, same damage.
+Two independent choices, both above the start button, both **purely
+cosmetic** — same reach, same damage, same speed, same collision radius. A
+Kong bites for exactly what a T-Rex bites for.
+
+**Form** (`rr.form`) changes the silhouette:
+
+| Form | Silhouette |
+| --- | --- |
+| 🦖 T-Rex | the original |
+| 🦅 Rex Bersayap | slimmer, with membrane wings that tuck against the ribs at a walk and spread when you jump |
+| 🦕 Gojira | 20 % thicker, longer heavier tail, broad maple-leaf dorsal plates |
+| 🦍 Kong | tail cut to a stub, barrel chest, arms 2.5× and hanging, heavy brow and a blunt muzzle, upright stance |
+
+**Skin** (`rr.skin`) changes the colours:
 
 | Skin | Look |
 | --- | --- |
@@ -177,9 +189,18 @@ cosmetic — same size, same reach, same damage.
 | 🌿 Zamrud Rimba | jungle green, lime belly, dark green stripes |
 | 🌋 Naga Magma | near-black hide with molten orange stripes and amber eyes |
 | ❄️ Raja Salju | pale ice-white with cool blue stripes |
+| ⚡ Badai Baja | charcoal with glowing ice-blue plates — Gojira's own |
+| 🦍 Bulu Kelam | dark brown fur — Kong's own |
 
-The body's three colours are baked into the mesh's vertex colours when it is
-swept, so `Rex.setSkin()` rebuilds the model. Only ever done from the menu.
+Each form has a default skin and brings it along when you pick it; changing
+the skin afterwards always wins, so a green Kong is yours if you want one.
+
+Both live on the same procedural body. A form is a set of dials in `FORMS`
+(girth, tail length, head and arm scale, ridge style, wings, rest pose), and a
+skin is three colours baked into the mesh's vertex colours as it is swept —
+which is why `Rex.setForm()` and `Rex.setSkin()` rebuild the model rather than
+tint it. Only ever done from the menu; position, health and cooldowns live on
+the instance, not the model.
 
 ## Arenas
 

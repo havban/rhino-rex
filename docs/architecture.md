@@ -65,6 +65,19 @@ ratio adapts at runtime:
 | medium | on | on (1024) | 2200 | 1.5 |
 | high | on | on (2048) | 4200 | 2 (1.5 on touch) |
 
+## The player model
+
+`js/rex.js` sweeps one skinned body over an 11-bone skeleton. Two config
+tables reshape it without a second model: `FORMS` (girth, tail length, head
+and arm scale, dorsal ridge style, wings, rest-pose overrides) and `SKINS`
+(body, belly, stripe, plate, wing, eye colours). Because the three body
+colours are baked into the mesh's vertex colours during the sweep, and the
+tail length changes the skeleton itself, both setters rebuild the model —
+cheap, and only ever triggered from the menu.
+
+Neither table can affect the fight: reach, damage and the collision radius all
+come from `ATTACK`/`REX`, never from the model.
+
 ## Wildlife
 
 `js/wildlife.js` holds a fixed pool of nine `Critter`s managed by one

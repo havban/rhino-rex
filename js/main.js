@@ -15,7 +15,7 @@
 // Source. The menu carries a source link pointing at the exact deployed
 // commit, which is how that obligation is met here - keep it working.
 import * as THREE from 'three';
-import { REX, ATTACK, WAVES, WORLD, CAMERA, RHINO, FIREBALL, IMPACT, SCENERY, PROGRESS, ITEMS, ARENAS, SKINS } from './config.js';
+import { REX, ATTACK, WAVES, WORLD, CAMERA, RHINO, FIREBALL, IMPACT, SCENERY, PROGRESS, ITEMS, ARENAS, SKINS, FORMS } from './config.js';
 import { World } from './world.js';
 import { Wildlife } from './wildlife.js';
 import { Rex } from './rex.js';
@@ -58,7 +58,11 @@ class Game {
     this.soundOn = localStorage.getItem('rr.sound') !== 'off';
     this.musicStyle = localStorage.getItem('rr.music') || 'ceria';
     this.arena = ARENAS[localStorage.getItem('rr.arena')] ? localStorage.getItem('rr.arena') : 'padang';
-    this.skin = SKINS[localStorage.getItem('rr.skin')] ? localStorage.getItem('rr.skin') : 'jingga';
+    this.form = FORMS[localStorage.getItem('rr.form')] ? localStorage.getItem('rr.form') : 'rex';
+    // never chosen a skin? wear the one that belongs to this hunter
+    this.skin = SKINS[localStorage.getItem('rr.skin')]
+      ? localStorage.getItem('rr.skin')
+      : (FORMS[this.form].skin || 'jingga');
 
     this.coarse = matchMedia('(pointer: coarse)').matches;
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: this.quality !== 'low', powerPreference: 'high-performance' });
@@ -79,7 +83,7 @@ class Game {
 
     this.world = new World(this.scene, this.quality, this.arena);
     this.wildlife = new Wildlife(this.scene);
-    this.rex = new Rex(this.scene, this.skin);
+    this.rex = new Rex(this.scene, this.skin, this.form);
     this.fx = new FX(this.scene, this.camera, $('fx-layer'));
     this.audio = new Audio();
     this.audio.setEnabled(this.soundOn);
@@ -88,6 +92,7 @@ class Game {
     this.input.onModeChange = (touch) => {
       $('touch').classList.toggle('on', touch);
       document.body.classList.toggle('is-touch', touch);
+      this._ctrlBoxes = null;     // the pads just appeared or vanished
     };
     // touch-first on phones and tablets; hybrid laptops start in mouse mode and
     // switch the moment a finger lands on the screen
@@ -271,6 +276,31 @@ class Game {
     arena.addEventListener('change', () => {
       this.setArena(arena.value);
       Stats.once(`arena-${this.arena}`, `Arena dipilih: ${ARENAS[this.arena].label}`);
+    });
+
+    const form = $('sel-form');
+    for (const [key, cfg] of Object.entries(FORMS)) {
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = `${cfg.glyph} ${cfg.short}`;
+      opt.title = cfg.label;
+      form.appendChild(opt);
+    }
+    form.value = this.form;
+    form.addEventListener('change', () => {
+      this.form = form.value;
+      localStorage.setItem('rr.form', this.form);
+      // each hunter arrives wearing its own look; the skin picker still wins
+      // afterwards if you want a green Kong
+      const want = FORMS[this.form].skin;
+      if (want && SKINS[want]) {
+        this.skin = want;
+        localStorage.setItem('rr.skin', want);
+        this.rex.skin = want;
+        $('sel-skin').value = want;
+      }
+      this.rex.setForm(this.form);
+      Stats.once(`form-${this.form}`, `Pemburu dipilih: ${FORMS[this.form].label}`);
     });
 
     const skin = $('sel-skin');
@@ -565,6 +595,7 @@ class Game {
   }
 
   _resize() {
+    this._ctrlBoxes = null;        // pad geometry moves with the layout
     const w = Math.round(visualViewport?.width || innerWidth);
     const h = Math.round(visualViewport?.height || innerHeight);
     const aspect = w / h;
@@ -619,7 +650,10 @@ class Game {
     this.rex.hp = saved ? Math.max(saved.hp, 45) : REX.maxHp;
     this.rex.fire = saved ? saved.fire : REX.maxFire;
     this.rex.alive = true;
-    this.rex.pos.set(0, 0, 14);
+    // Dead centre, where SCENERY.spawnClearing guarantees nothing to stand
+    // between the camera and the player - resuming used to drop you with a
+    // tree in the boom.
+    this.rex.pos.set(0, 0, 0);
     this.rex.vel.set(0, 0, 0);
     this.rex.y = 0; this.rex.vy = 0;
     this.rex.yaw = Math.PI;
@@ -1496,12 +1530,40 @@ class Game {
       // frame puts arrows in the corners, which is exactly where the joystick,
       // the attack pads and the HUD panels live.
       const angle = Math.atan2(-v.y, v.x);
-      const x = w / 2 + Math.cos(angle) * w * 0.34;
-      const y = h / 2 + Math.sin(angle) * h * 0.34;
+      // On a short landscape screen even the ellipse can clip the thumb pads,
+      // so pull the arrow in towards the centre until it is clear. The
+      // direction is what matters; the distance is decoration.
+      let x = 0, y = 0;
+      for (const k of [0.34, 0.29, 0.24, 0.19, 0.15, 0.12]) {
+        x = w / 2 + Math.cos(angle) * w * k;
+        y = h / 2 + Math.sin(angle) * h * k;
+        if (!this._overControls(x, y)) break;
+      }
       const deg = angle * 180 / Math.PI + 90;
       el.style.transform = `translate(${x}px, ${y}px) rotate(${deg}deg)`;
       void margin;
     });
+  }
+
+  /**
+   * Is this point sitting on the joystick or the attack pads? Boxes are
+   * cached per layout, because this runs for every off-screen marker.
+   */
+  _overControls(x, y) {
+    if (!this._ctrlBoxes) {
+      const boxes = [];
+      for (const el of [$('stick'), document.querySelector('.tbtns')]) {
+        if (!el) continue;
+        const s = getComputedStyle(el);
+        if (s.display === 'none' || s.visibility === 'hidden') continue;
+        const b = el.getBoundingClientRect();
+        if (b.width) boxes.push(b);
+      }
+      this._ctrlBoxes = boxes;
+    }
+    const pad = 24;          // half an arrow, plus a little air
+    return this._ctrlBoxes.some((b) =>
+      x > b.left - pad && x < b.right + pad && y > b.top - pad && y < b.bottom + pad);
   }
 
   _flashVignette() {

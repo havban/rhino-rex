@@ -393,7 +393,9 @@ export class World {
   _scatterProps() {
     const placed = [];
     const ok = (x, z, minD) => {
-      if (Math.hypot(x, z) < 22) return false;           // keep the spawn clearing open
+      // Wide enough that the chase boom (21 units behind the player, who
+      // starts in the middle) can never start out behind a tree.
+      if (Math.hypot(x, z) < SCENERY.spawnClearing) return false;
       return placed.every((p) => Math.hypot(p.x - x, p.z - z) > minD);
     };
     let guard = 0;

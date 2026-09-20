@@ -29,8 +29,13 @@ Semburkan api, gigit, dan sabetkan ekor untuk bertahan gelombang demi gelombang.
   mereka balas menyerang beberapa saat, lalu tenang lagi. Bisa dibunuh, **tidak memberi
   skor sama sekali**, dan muncul lagi di tempat lain setelah belasan detik. Sengaja
   dibatasi sembilan ekor sekaligus supaya arena terasa hidup tanpa jadi ramai.
-- **Empat kulit T-Rex** yang bisa dipilih di menu: 🦖 Jingga Klasik, 🌿 Zamrud Rimba,
-  🌋 Naga Magma, dan ❄️ Raja Salju. Murni tampilan — ukuran dan kekuatannya sama persis.
+- **Empat sosok pemburu** yang bisa dipilih di menu: 🦖 T-Rex, 🦅 Rex Bersayap (sayap
+  membran yang mengepak saat melompat), 🦕 Gojira (bertubuh tebal dengan sirip punggung),
+  dan 🦍 Kong (kera besar, tanpa ekor, berlengan panjang). **Murni tampilan** — jangkauan,
+  kerusakan, dan kecepatannya sama persis, jadi tidak ada yang lebih kuat.
+- **Enam kulit** yang bisa dipadukan dengan sosok mana pun: 🦖 Jingga Klasik, 🌿 Zamrud
+  Rimba, 🌋 Naga Magma, ❄️ Raja Salju, ⚡ Badai Baja, dan 🦍 Bulu Kelam. Tiap sosok datang
+  dengan kulit khasnya, tapi kamu bebas menggantinya.
 - **Badak yang menyeruduk** — mereka mengais tanah dulu (aba-aba), lalu menerjang lurus.
   Menepilah; kalau mereka menabrak pohon atau batu mereka pusing dan menerima kerusakan ekstra.
 - **Empat jenis badak**: anakan yang gesit, banteng, badak berbaju zirah, dan **Matriark** raksasa

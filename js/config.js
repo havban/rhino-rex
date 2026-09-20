@@ -99,6 +99,7 @@ export const SCENERY = {
   tailDamage: 34,
   fireDps: 26,            // the breath, per second inside the cone
   blastDamage: 90,        // fireball, at the centre of the blast
+  spawnClearing: 27,      // no tree or boulder this close to the middle
   respawnTree: 26,
   respawnRock: 34,
   fallTime: 1.1,          // how long the topple/crumble animation runs
@@ -257,15 +258,45 @@ export const WILDLIFE = {
 };
 
 /**
+ * Hunter forms. Same skeleton, same reach, same numbers - only the silhouette
+ * changes, so picking one never changes the fight. Each is a set of dials on
+ * the one procedural body in js/rex.js: how thick it is, how long the tail
+ * runs, how big the head and arms are, what runs down its back, and whether
+ * it has wings.
+ */
+export const FORMS = {
+  rex: {
+    label: 'T-Rex', short: 'T-Rex', glyph: '\u{1F996}',
+    girth: 1, tail: 1, head: 1, arms: 1, ridge: 'spikes', wings: false, skin: 'jingga',
+  },
+  bersayap: {
+    label: 'Rex Bersayap', short: 'Bersayap', glyph: '\u{1F985}',
+    girth: 0.93, tail: 1.06, head: 0.97, arms: 0.9, ridge: 'spikes', wings: true, skin: 'salju',
+  },
+  gojira: {
+    label: 'Gojira', short: 'Gojira', glyph: '\u{1F995}',
+    girth: 1.2, tail: 1.16, head: 1.06, arms: 1.45, ridge: 'plates', wings: false, skin: 'badai',
+    pose: { body: -0.52, chest: -0.12, neck1: -0.4, head: 0.9 },
+  },
+  kong: {
+    label: 'Kong', short: 'Kong', glyph: '\u{1F98D}',
+    girth: 1.16, tail: 0.3, head: 0.92, arms: 2.5, ridge: 'none', wings: false, ape: true, skin: 'kelam',
+    pose: { body: -0.78, spine: -0.04, chest: -0.06, neck1: -0.22, neck2: -0.12, head: 0.5, tail0: 0.1, tail: 0.0 },
+  },
+};
+
+/**
  * T-Rex skins. Purely cosmetic: same size, same reach, same everything.
  * `body`, `belly` and `stripe` are baked into the body mesh's vertex colours,
  * so changing skin rebuilds the model (only ever done from the menu).
  */
 export const SKINS = {
-  jingga: { label: 'Jingga Klasik', short: 'Jingga', glyph: '\u{1F996}', body: 0xff8a3d, belly: 0xffe2b0, stripe: 0xd94f18, tongue: 0xf07a8f, eye: 0xfffdf5, pupil: 0x1d120a },
-  zamrud: { label: 'Zamrud Rimba', short: 'Zamrud', glyph: '\u{1F33F}', body: 0x46b45f, belly: 0xeaf6b4, stripe: 0x1d6b3c, tongue: 0xe8748c, eye: 0xfff7d8, pupil: 0x10240f },
-  magma:  { label: 'Naga Magma', short: 'Magma', glyph: '\u{1F30B}', body: 0x4b3436, belly: 0xffab4d, stripe: 0xff4d0a, tongue: 0xff9a6a, eye: 0xffd070, pupil: 0x140a06 },
-  salju:  { label: 'Raja Salju', short: 'Salju', glyph: '\u{2744}\uFE0F', body: 0xe4edf8, belly: 0xffffff, stripe: 0x74a8dd, tongue: 0xf3a0b4, eye: 0xeaf6ff, pupil: 0x12233a },
+  jingga: { label: 'Jingga Klasik', short: 'Jingga', glyph: '\u{1F996}', body: 0xff8a3d, belly: 0xffe2b0, stripe: 0xd94f18, tongue: 0xf07a8f, eye: 0xfffdf5, pupil: 0x1d120a, plate: 0xffd9a0, wing: 0xe0672a },
+  zamrud: { label: 'Zamrud Rimba', short: 'Zamrud', glyph: '\u{1F33F}', body: 0x46b45f, belly: 0xeaf6b4, stripe: 0x1d6b3c, tongue: 0xe8748c, eye: 0xfff7d8, pupil: 0x10240f, plate: 0xd6f27a, wing: 0x2c7a45 },
+  magma:  { label: 'Naga Magma', short: 'Magma', glyph: '\u{1F30B}', body: 0x4b3436, belly: 0xffab4d, stripe: 0xff4d0a, tongue: 0xff9a6a, eye: 0xffd070, pupil: 0x140a06, plate: 0xff7a1e, wing: 0x7a2c1e },
+  badai:  { label: 'Badai Baja', short: 'Badai', glyph: '\u{26A1}', body: 0x3d4653, belly: 0x8fa2b5, stripe: 0x252d38, tongue: 0xd98aa0, eye: 0xd6f6ff, pupil: 0x0c1218, plate: 0xa8ecff, wing: 0x2b3540 },
+  kelam:  { label: 'Bulu Kelam', short: 'Kelam', glyph: '\u{1F98D}', body: 0x4a3a30, belly: 0x91775b, stripe: 0x2c221b, tongue: 0xd98aa0, eye: 0xffeccb, pupil: 0x140d08, plate: 0x8a6f52, wing: 0x392c23 },
+  salju:  { label: 'Raja Salju', short: 'Salju', glyph: '\u{2744}\uFE0F', body: 0xe4edf8, belly: 0xffffff, stripe: 0x74a8dd, tongue: 0xf3a0b4, eye: 0xeaf6ff, pupil: 0x12233a, plate: 0xbfe0ff, wing: 0x8fbde8 },
 };
 
 /**
@@ -285,7 +316,7 @@ export const ARENAS = {
     ground: { base: '#6fbe46', flecks: ['rgba(96,180,64,.9)', 'rgba(142,210,88,.85)', 'rgba(74,152,52,.8)', 'rgba(236,226,122,.5)'] },
     patch: { color: 0xffe9a8, opacity: 0.16 },
     blades: { hue: 0.24, spread: 0.07, sat: 0.62, light: 0.48, density: 1, height: 1, width: 1 },
-    motes: { kind: 'flower', colors: [0xff6f91, 0xffd93d, 0xff9f68, 0xf5f7ff, 0xc77dff], density: 1, size: 1 },
+    motes: null,          // the old floating flower balls were just clutter
     tree: { style: 'leafy', bark: 0xa9703f, leaves: [0x62c94a, 0x7fd65c, 0x4fb53d], stump: 0x4a3a2c },
     rock: { color: 0xb9b0a2, emissive: 0x000000, glow: 0 },
     clouds: { color: 0xffffff, emissive: 0xdfefff, intensity: 0.35, density: 1, y: 55, flat: 0.62 },
