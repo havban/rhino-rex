@@ -258,30 +258,37 @@ export const WILDLIFE = {
 };
 
 /**
- * Hunter forms. Same skeleton, same reach, same numbers - only the silhouette
- * changes, so picking one never changes the fight. Each is a set of dials on
- * the one procedural body in js/rex.js: how thick it is, how long the tail
- * runs, how big the head and arms are, what runs down its back, and whether
- * it has wings.
+ * Hunter forms. Same skeleton, same reach, same numbers - only the creature
+ * changes, so picking one never changes the fight.
+ *
+ * `creature` chooses the builder: 'theropod' is the T-Rex body in js/rex.js
+ * (dialled thinner and given wings for the wyvern), while 'kaiju' and 'ape'
+ * are built from scratch in js/creatures.js - a Gojira is not a fat T-Rex and
+ * Kong is not a T-Rex with long arms. The rest is stance: where the hips sit,
+ * how big the whole thing is, and the rest angles for the torso and legs.
+ * Legs hang off the torso, so a big `pose.body` tilt has to be answered by
+ * `leg.hip` or the feet swing out from under it.
  */
 export const FORMS = {
   rex: {
-    label: 'T-Rex', short: 'T-Rex', glyph: '\u{1F996}',
-    girth: 1, tail: 1, head: 1, arms: 1, ridge: 'spikes', wings: false, skin: 'jingga',
+    label: 'T-Rex', short: 'T-Rex', glyph: '\u{1F996}', creature: 'theropod',
+    girth: 1, tail: 1, head: 1, arms: 1, wings: false, skin: 'jingga',
   },
   bersayap: {
-    label: 'Rex Bersayap', short: 'Bersayap', glyph: '\u{1F985}',
-    girth: 0.93, tail: 1.06, head: 0.97, arms: 0.9, ridge: 'spikes', wings: true, skin: 'salju',
+    label: 'Rex Bersayap', short: 'Bersayap', glyph: '\u{1F985}', creature: 'theropod',
+    girth: 0.93, tail: 1.06, head: 0.97, arms: 0.9, wings: true, skin: 'salju',
   },
   gojira: {
-    label: 'Gojira', short: 'Gojira', glyph: '\u{1F995}',
-    girth: 1.2, tail: 1.16, head: 1.06, arms: 1.45, ridge: 'plates', wings: false, skin: 'badai',
-    pose: { body: -0.52, chest: -0.12, neck1: -0.4, head: 0.9 },
+    label: 'Gojira', short: 'Gojira', glyph: '\u{1F995}', creature: 'kaiju',
+    tail: 1.0, skin: 'badai', hipScale: 1.05, scale: 1.12,
+    pose: { body: -0.95, spine: 0.0, chest: -0.05, neck1: 0.3, neck2: 0.28, head: 0.5, tail0: 0.45, tail: 0.05 },
+    leg: { hip: 0.62, knee: 0.42, ankle: -0.3 },
   },
   kong: {
-    label: 'Kong', short: 'Kong', glyph: '\u{1F98D}',
-    girth: 1.16, tail: 0.3, head: 0.92, arms: 2.5, ridge: 'none', wings: false, ape: true, skin: 'kelam',
-    pose: { body: -0.78, spine: -0.04, chest: -0.06, neck1: -0.22, neck2: -0.12, head: 0.5, tail0: 0.1, tail: 0.0 },
+    label: 'Kong', short: 'Kong', glyph: '\u{1F98D}', creature: 'ape',
+    tail: 0.12, skin: 'kelam', hipScale: 0.77, scale: 1.15,
+    pose: { body: -0.62, spine: -0.06, chest: -0.12, neck1: -0.5, neck2: -0.12, head: 0.8, tail0: 0, tail: 0 },
+    leg: { hip: 0.34, knee: 0.5, ankle: -0.34 },
   },
 };
 
@@ -295,7 +302,7 @@ export const SKINS = {
   zamrud: { label: 'Zamrud Rimba', short: 'Zamrud', glyph: '\u{1F33F}', body: 0x46b45f, belly: 0xeaf6b4, stripe: 0x1d6b3c, tongue: 0xe8748c, eye: 0xfff7d8, pupil: 0x10240f, plate: 0xd6f27a, wing: 0x2c7a45 },
   magma:  { label: 'Naga Magma', short: 'Magma', glyph: '\u{1F30B}', body: 0x4b3436, belly: 0xffab4d, stripe: 0xff4d0a, tongue: 0xff9a6a, eye: 0xffd070, pupil: 0x140a06, plate: 0xff7a1e, wing: 0x7a2c1e },
   badai:  { label: 'Badai Baja', short: 'Badai', glyph: '\u{26A1}', body: 0x3d4653, belly: 0x8fa2b5, stripe: 0x252d38, tongue: 0xd98aa0, eye: 0xd6f6ff, pupil: 0x0c1218, plate: 0xa8ecff, wing: 0x2b3540 },
-  kelam:  { label: 'Bulu Kelam', short: 'Kelam', glyph: '\u{1F98D}', body: 0x4a3a30, belly: 0x91775b, stripe: 0x2c221b, tongue: 0xd98aa0, eye: 0xffeccb, pupil: 0x140d08, plate: 0x8a6f52, wing: 0x392c23 },
+  kelam:  { label: 'Bulu Kelam', short: 'Kelam', glyph: '\u{1F98D}', body: 0x463a31, belly: 0xa5896a, stripe: 0x2c221b, tongue: 0xd98aa0, eye: 0xffeccb, pupil: 0x140d08, plate: 0x9aa2ab, wing: 0x392c23 },
   salju:  { label: 'Raja Salju', short: 'Salju', glyph: '\u{2744}\uFE0F', body: 0xe4edf8, belly: 0xffffff, stripe: 0x74a8dd, tongue: 0xf3a0b4, eye: 0xeaf6ff, pupil: 0x12233a, plate: 0xbfe0ff, wing: 0x8fbde8 },
 };
 

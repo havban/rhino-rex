@@ -67,13 +67,26 @@ ratio adapts at runtime:
 
 ## The player model
 
-`js/rex.js` sweeps one skinned body over an 11-bone skeleton. Two config
-tables reshape it without a second model: `FORMS` (girth, tail length, head
-and arm scale, dorsal ridge style, wings, rest-pose overrides) and `SKINS`
-(body, belly, stripe, plate, wing, eye colours). Because the three body
-colours are baked into the mesh's vertex colours during the sweep, and the
-tail length changes the skeleton itself, both setters rebuild the model —
-cheap, and only ever triggered from the menu.
+`js/rex.js` owns the 11-bone skeleton, the animator, and the theropod body —
+one skinned surface swept over the bones. `FORMS` picks which creature hangs
+off that skeleton:
+
+- `creature: 'theropod'` → `Rex._buildTheropod()`, dialled by girth, tail
+  length, head and arm scale, and an optional pair of wings.
+- `creature: 'kaiju'` → `buildKaiju()` in `js/creatures.js`.
+- `creature: 'ape'` → `buildApe()` in `js/creatures.js`.
+
+The skeleton is the contract. Each builder must leave behind `rex.mesh`,
+`rex.head`, `rex.jaw`, `rex.mouthAnchor`, `rex.legs` and `rex.arms`, and then
+the one animator walks, bites and spins all of them. `FORMS` also carries
+stance — `hipScale`, `scale`, `pose` and `leg` overrides — because the legs
+hang off the torso, so a big torso tilt has to be answered at the hip or the
+feet swing out from under the creature.
+
+`SKINS` is orthogonal: body, belly, stripe, plate, wing and eye colours. The
+three body colours are baked into the vertex colours during the sweep and the
+tail length changes the skeleton, so both setters rebuild the model — cheap,
+and only ever triggered from the menu.
 
 Neither table can affect the fight: reach, damage and the collision radius all
 come from `ATTACK`/`REX`, never from the model.

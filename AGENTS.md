@@ -58,7 +58,8 @@ index.html            HUD, menus, import map, GoatCounter tag
 css/style.css         all styling, including responsive breakpoints
 js/main.js            game loop, waves, combat resolution, UI wiring  (largest file)
 js/config.js          every tuning number lives here — start here to rebalance
-js/rex.js             player: skinned T-Rex model, animation, attacks
+js/rex.js             player: skeleton, animator, theropod body, attacks
+js/creatures.js       the non-dinosaur hunters: kaiju and ape bodies on the same skeleton
 js/rhino.js           enemy: model, charge AI, replicated mode
 js/world.js           arena (3 themes from ARENAS), sky, destructible trees/rocks, collision
 js/wildlife.js        background animals: wander, flee, retaliate, respawn — no score
