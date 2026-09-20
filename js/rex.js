@@ -1,6 +1,6 @@
 // The player: a smooth, skinned T-Rex built from swept surfaces, not boxes.
 import * as THREE from 'three';
-import { REX, ATTACK, WORLD, COLORS, FIREBALL } from './config.js';
+import { REX, ATTACK, WORLD, COLORS, FIREBALL, SKINS } from './config.js';
 import { makeProfile, tubeAlongZ, ellipsoid, capsule, cone, skinMaterial } from './geom.js';
 
 const wrapPi = (a) => {
@@ -27,8 +27,9 @@ const HIP_Y = 3.5;
 const LEG = { hip: -0.30, knee: 0.65, ankle: -0.45 };          // height of the hip pivot above the ground
 
 export class Rex {
-  constructor(scene) {
+  constructor(scene, skin = 'jingga') {
     this.scene = scene;
+    this.skin = SKINS[skin] ? skin : 'jingga';
     this.pos = new THREE.Vector3(0, 0, 18);
     this.vel = new THREE.Vector3();
     this.yaw = Math.PI;
@@ -57,6 +58,22 @@ export class Rex {
     this._build();
   }
 
+  /**
+   * Swap the look. The body's three colours are baked into the mesh's vertex
+   * colours when it is swept, so this rebuilds the model rather than tinting
+   * it - only ever done from the menu, where a frame's work does not matter.
+   * Position, health and everything else live on the instance, not the model.
+   */
+  setSkin(name) {
+    if (!SKINS[name] || name === this.skin) return;
+    this.skin = name;
+    this.scene.remove(this.root);
+    this.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+    for (const k in this.mats) this.mats[k].dispose();
+    this._build();
+    this.resetPose();
+  }
+
   _build() {
     const root = new THREE.Group();
     this.root = root;
@@ -67,16 +84,17 @@ export class Rex {
     root.add(body);
     this.body = body;
 
-    const skin = COLORS.rexBody, belly = COLORS.rexBelly, stripe = COLORS.rexStripe;
+    const sk = SKINS[this.skin] || SKINS.jingga;
+    const skin = sk.body, belly = sk.belly, stripe = sk.stripe;
     this.mats = {
       skin: skinMaterial(skin),
       stripe: skinMaterial(stripe),
       belly: skinMaterial(belly),
       tooth: skinMaterial(0xfffdf0, { shininess: 40 }),
       body: skinMaterial(0xffffff, { vertexColors: true }),
-      eye: new THREE.MeshPhongMaterial({ color: 0xfffdf5, shininess: 70 }),
-      pupil: new THREE.MeshBasicMaterial({ color: 0x1d120a }),
-      tongue: skinMaterial(0xf07a8f),
+      eye: new THREE.MeshPhongMaterial({ color: sk.eye, shininess: 70 }),
+      pupil: new THREE.MeshBasicMaterial({ color: sk.pupil }),
+      tongue: skinMaterial(sk.tongue),
     };
 
     // ---- skeleton --------------------------------------------------------

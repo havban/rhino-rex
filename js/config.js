@@ -219,13 +219,63 @@ export const CAMERA = {
 };
 
 /**
+ * Wildlife. Background animals that make the arena feel inhabited. They are
+ * worth **no score** - they are scenery that can bite back. Left alone they
+ * wander and flee; hit one and it turns on you for a while, then calms down.
+ * Kept deliberately few: the rhinos are the fight, these are the texture.
+ */
+export const WILDLIFE = {
+  total: 9,                 // alive at once, across the whole arena
+  respawn: [16, 30],        // seconds before a dead one reappears somewhere else
+  fleeRange: 16,            // how close you get before a calm animal bolts
+  rhinoFleeRange: 13,       // ... and how close a charging rhino has to be
+  angerTime: 8.0,           // seconds it stays cross after being hit
+  minSpawnDist: 34,         // never pop into existence in your lap
+  kinds: {
+    ayam: {
+      label: 'Ayam', max: 3, weight: 3,
+      hp: 20, speed: 8.5, scale: 2.0, radius: 0.8, hitY: 1.5,
+      damage: 4, range: 3.0, attackCd: 1.1, flee: true,
+    },
+    dodo: {
+      label: 'Dodo', max: 2, weight: 2,
+      hp: 70, speed: 5.6, scale: 1.9, radius: 1.1, hitY: 2.3,
+      damage: 10, range: 3.6, attackCd: 1.7, flee: true, rush: 1.7,
+    },
+    burung: {
+      label: 'Burung', max: 3, weight: 3,
+      hp: 14, speed: 14, scale: 1.7, radius: 0.8, hitY: 0.8,
+      damage: 5, range: 3.2, attackCd: 2.0, flee: true,
+      fly: { cruise: [7, 13], dive: 2.6 },
+    },
+    kurakura: {
+      label: 'Kura-kura', max: 2, weight: 1.4,
+      hp: 120, speed: 2.2, scale: 2.0, radius: 1.0, hitY: 1.2,
+      damage: 8, range: 2.8, attackCd: 1.6, flee: false, armor: 0.55,
+    },
+  },
+};
+
+/**
+ * T-Rex skins. Purely cosmetic: same size, same reach, same everything.
+ * `body`, `belly` and `stripe` are baked into the body mesh's vertex colours,
+ * so changing skin rebuilds the model (only ever done from the menu).
+ */
+export const SKINS = {
+  jingga: { label: 'Jingga Klasik', short: 'Jingga', glyph: '\u{1F996}', body: 0xff8a3d, belly: 0xffe2b0, stripe: 0xd94f18, tongue: 0xf07a8f, eye: 0xfffdf5, pupil: 0x1d120a },
+  zamrud: { label: 'Zamrud Rimba', short: 'Zamrud', glyph: '\u{1F33F}', body: 0x46b45f, belly: 0xeaf6b4, stripe: 0x1d6b3c, tongue: 0xe8748c, eye: 0xfff7d8, pupil: 0x10240f },
+  magma:  { label: 'Naga Magma', short: 'Magma', glyph: '\u{1F30B}', body: 0x4b3436, belly: 0xffab4d, stripe: 0xff4d0a, tongue: 0xff9a6a, eye: 0xffd070, pupil: 0x140a06 },
+  salju:  { label: 'Raja Salju', short: 'Salju', glyph: '\u{2744}\uFE0F', body: 0xe4edf8, belly: 0xffffff, stripe: 0x74a8dd, tongue: 0xf3a0b4, eye: 0xeaf6ff, pupil: 0x12233a },
+};
+
+/**
  * Arenas. Same rules and the same arena size everywhere - only the look
  * changes, so nothing here can make one harder than another. Every value is
  * fed to js/world.js, which builds the whole place procedurally.
  */
 export const ARENAS = {
   padang: {
-    label: 'Padang Ceria', glyph: '\u{1F33F}',
+    label: 'Padang Ceria', short: 'Padang', glyph: '\u{1F33F}',
     background: 0x8fd9ff,
     sky: { top: 0x4fb8ff, horizon: 0xfff0d0 },
     fog: { color: 0xcdeeff, near: 90, far: 320 },
@@ -245,7 +295,7 @@ export const ARENAS = {
   },
 
   vulkanik: {
-    label: 'Kawah Vulkanik', glyph: '\u{1F30B}',
+    label: 'Kawah Vulkanik', short: 'Vulkanik', glyph: '\u{1F30B}',
     background: 0x8c4a3f,
     sky: { top: 0x3b1f63, horizon: 0xff9a3c },
     // light fog only: the crater should look hot, not smothered
@@ -266,7 +316,7 @@ export const ARENAS = {
   },
 
   rawa: {
-    label: 'Rawa Berkabut', glyph: '\u{1F40A}',
+    label: 'Rawa Berkabut', short: 'Rawa', glyph: '\u{1F40A}',
     background: 0x9ed9cf,
     sky: { top: 0x63c9c0, horizon: 0xe6f7cf },
     fog: { color: 0xb6ded1, near: 48, far: 205 },

@@ -65,6 +65,23 @@ ratio adapts at runtime:
 | medium | on | on (1024) | 2200 | 1.5 |
 | high | on | on (2048) | 4200 | 2 (1.5 on touch) |
 
+## Wildlife
+
+`js/wildlife.js` holds a fixed pool of nine `Critter`s managed by one
+`Wildlife` instance. Each species is a procedural model (`chicken`, `dodo`,
+`bird`, `tortoise`) that returns the parts the animator touches — head, wings,
+legs — with everything else parented to the group.
+
+`Wildlife.update()` returns the damage the animals did to the player this
+frame, so `Game` can play the hurt feedback once. It runs in the menu too, and
+is passed `canHarm: false` there, which keeps the arena alive behind the card
+without the ability to hurt anyone. A dead critter counts its respawn timer
+down inside the same loop and places itself somewhere new.
+
+Damage flows the other way through `Game._hitCritter()`, which every weapon
+path calls: `coneHit` (bite and tail), `fireTick` (breath) and `_explode`
+(fireball, dynamite, mines). None of them touch score, kills, combo or drops.
+
 ## Arenas
 
 `js/world.js` builds the whole arena from one entry in `ARENAS`

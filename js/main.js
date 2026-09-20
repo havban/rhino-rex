@@ -15,8 +15,9 @@
 // Source. The menu carries a source link pointing at the exact deployed
 // commit, which is how that obligation is met here - keep it working.
 import * as THREE from 'three';
-import { REX, ATTACK, WAVES, WORLD, CAMERA, RHINO, FIREBALL, IMPACT, SCENERY, PROGRESS, ITEMS, ARENAS } from './config.js';
+import { REX, ATTACK, WAVES, WORLD, CAMERA, RHINO, FIREBALL, IMPACT, SCENERY, PROGRESS, ITEMS, ARENAS, SKINS } from './config.js';
 import { World } from './world.js';
+import { Wildlife } from './wildlife.js';
 import { Rex } from './rex.js';
 import { Rhino, spawnRing } from './rhino.js';
 import { FX } from './fx.js';
@@ -57,6 +58,7 @@ class Game {
     this.soundOn = localStorage.getItem('rr.sound') !== 'off';
     this.musicStyle = localStorage.getItem('rr.music') || 'ceria';
     this.arena = ARENAS[localStorage.getItem('rr.arena')] ? localStorage.getItem('rr.arena') : 'padang';
+    this.skin = SKINS[localStorage.getItem('rr.skin')] ? localStorage.getItem('rr.skin') : 'jingga';
 
     this.coarse = matchMedia('(pointer: coarse)').matches;
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: this.quality !== 'low', powerPreference: 'high-performance' });
@@ -76,7 +78,8 @@ class Game {
     this.chase = new ChaseCamera(this.camera);
 
     this.world = new World(this.scene, this.quality, this.arena);
-    this.rex = new Rex(this.scene);
+    this.wildlife = new Wildlife(this.scene);
+    this.rex = new Rex(this.scene, this.skin);
     this.fx = new FX(this.scene, this.camera, $('fx-layer'));
     this.audio = new Audio();
     this.audio.setEnabled(this.soundOn);
@@ -260,13 +263,30 @@ class Game {
     for (const [key, cfg] of Object.entries(ARENAS)) {
       const opt = document.createElement('option');
       opt.value = key;
-      opt.textContent = `${cfg.glyph} ${cfg.label}`;
+      opt.textContent = `${cfg.glyph} ${cfg.short}`;
+      opt.title = cfg.label;
       arena.appendChild(opt);
     }
     arena.value = this.arena;
     arena.addEventListener('change', () => {
       this.setArena(arena.value);
       Stats.once(`arena-${this.arena}`, `Arena dipilih: ${ARENAS[this.arena].label}`);
+    });
+
+    const skin = $('sel-skin');
+    for (const [key, cfg] of Object.entries(SKINS)) {
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = `${cfg.glyph} ${cfg.short}`;
+      opt.title = cfg.label;
+      skin.appendChild(opt);
+    }
+    skin.value = this.skin;
+    skin.addEventListener('change', () => {
+      this.skin = skin.value;
+      localStorage.setItem('rr.skin', this.skin);
+      this.rex.setSkin(this.skin);
+      Stats.once(`skin-${this.skin}`, `Kulit dipilih: ${SKINS[this.skin].label}`);
     });
 
     addEventListener('keydown', (e) => {
@@ -622,6 +642,7 @@ class Game {
       weapons: (saved && saved.weapons) || { bite: 0, tail: 0, fire: 0, fireball: 0 },
     };
     this._buffered = { bite: 0, tail: 0, fireball: 0 };
+    this.wildlife.reset(this.rex.pos);
     Stats.event(saved ? 'run-resume' : 'run-start', saved ? 'Melanjutkan permainan' : 'Permainan dimulai');
     Stats.event(this.mp ? 'mode-coop' : 'mode-solo', this.mp ? 'Main bersama' : 'Main sendiri');
     Stats.once(`quality-${this.quality}`, `Grafis: ${this.quality}`);
@@ -852,6 +873,17 @@ class Game {
       if (this.run) this.run.weapons[type] += 1;
       hits++;
     }
+    // the wildlife is in the way too; it just does not score
+    for (const c of this.wildlife.alive()) {
+      const to = new THREE.Vector3(c.pos.x - origin.x, 0, c.pos.z - origin.z);
+      const d = to.length() - c.radius;
+      if (d > cfg.range) continue;
+      to.normalize();
+      if (fwd.dot(to) < Math.cos(cfg.halfAngle)) continue;
+      this._hitCritter(c, cfg.damage, type, to, { stun: type === 'tail' });
+      hits++;
+    }
+
     if (type === 'tail') {
       for (const o of this.world.obstacles) {
         if (!o.alive || o.hp === undefined) continue;
@@ -1008,6 +1040,13 @@ class Game {
       this.fx.thwack(r.pos.clone().setY(2.0 * r.scaleF), away, IMPACT.sparksPerHit, 1.2);
       if (!r.alive) this._onKill(r, 'fireball');
     }
+    for (const c of this.wildlife.alive()) {
+      const d = Math.hypot(c.pos.x - pos.x, c.pos.z - pos.z) - c.radius;
+      if (d > splash) continue;
+      const falloff = 1 - Math.max(0, d) / splash;
+      const away = new THREE.Vector3(c.pos.x - pos.x, 0, c.pos.z - pos.z).normalize();
+      this._hitCritter(c, power * falloff, 'blast', away);
+    }
   }
 
   // Grit kicked up by the pivoting feet while the body spins.
@@ -1059,6 +1098,35 @@ class Game {
       if (r._fireTally > 22) { this.fx.number(r.pos.clone().setY(4.4 * r.scaleF), Math.round(r._fireTally), 'burn'); r._fireTally = 0; }
       if (!r.alive) this._onKill(r, 'fire');
     }
+    for (const c of this.wildlife.alive()) {
+      const to = new THREE.Vector3(c.pos.x - flat.x, 0, c.pos.z - flat.z);
+      const d = to.length() - c.radius;
+      if (d > cfg.range) continue;
+      to.normalize();
+      if (d > 0.5 && fwd.dot(to) < cosHalf) continue;
+      const alive = c.alive;
+      const dealt = c.hit(cfg.dps * dt, { knock: null });
+      c._fireTally = (c._fireTally || 0) + dealt;
+      if (c._fireTally > 12) { this.fx.number(c.pos.clone().setY(c.hitY), Math.round(c._fireTally), 'burn'); c._fireTally = 0; }
+      if (alive && !c.alive) this._critterDown(c);
+    }
+  }
+
+  /** One blow on an animal: numbers, feathers, and a squawk. No score. */
+  _hitCritter(c, amount, type, dir, { stun = false } = {}) {
+    const alive = c.alive;
+    const dealt = c.hit(amount, { knock: dir });
+    this.fx.number(c.pos.clone().setY(c.hitY), Math.round(dealt), type === 'bite' ? 'bite' : '');
+    this.fx.impact(c.pos.clone().setY(c.hitY * 0.8), 0xfff4dc, stun ? 8 : 12);
+    this.audio.squawk(c.kind, false);
+    if (alive && !c.alive) this._critterDown(c);
+    return dealt;
+  }
+
+  _critterDown(c) {
+    this.fx.impact(c.pos.clone().setY(c.hitY * 0.8), 0xfffaf0, 20);
+    this.fx.dustBurst(c.pos.clone().setY(0.25), 8, 0.7);
+    this.audio.squawk(c.kind, true);
   }
 
   _registerHit(r, dealt, type, dir = null) {
@@ -1177,6 +1245,13 @@ class Game {
     }
     this.fx.update(dt);
     this._updatePickups(dt);
+
+    // Wildlife runs in the menu too, so the arena is never still. It only
+    // gets to bite while a run is actually going.
+    const canHarm = this.state === 'playing' && this.rex.alive;
+    const bites = this.wildlife.update(dt, this.rex, this.world,
+      canHarm ? this.livingRhinos() : [], canHarm);
+    if (bites > 0) { this.audio.hurt(); this._flashVignette(); this.fx.shake(0.25); }
 
     const input = this.input;
     input.sample();

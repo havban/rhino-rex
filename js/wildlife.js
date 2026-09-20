@@ -1,0 +1,544 @@
+/**
+ * Wildlife: the animals that live in the arena rather than fight over it.
+ *
+ * They are worth no score and never count towards a wave. Left alone they
+ * potter about and bolt when something big comes near; hit one and it turns
+ * on you for a few seconds and pecks back, then calms down. Kill one and it
+ * reappears somewhere else a while later, so the arena never empties.
+ *
+ * Deliberately sparse (nine at a time across a 150-unit arena) and smaller
+ * than any rhino, so they read as scenery at a glance and never hide the
+ * fight.
+ */
+import * as THREE from 'three';
+import { WORLD, WILDLIFE } from './config.js';
+import { ellipsoid, capsule, cone, skinMaterial } from './geom.js';
+
+const TAU = Math.PI * 2;
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+// ---------------------------------------------------------------- models --
+// Each builder returns the parts the animator needs; everything else just
+// hangs off the group. Built facing +Z, one unit ≈ one unit of the world,
+// then scaled by the species' `scale`.
+
+function chicken() {
+  const g = new THREE.Group();
+  const white = skinMaterial(0xfdfbf4);
+  const comb = skinMaterial(0xe8453a);
+  const beakM = skinMaterial(0xf5a623);
+  const dark = skinMaterial(0x6b5a4a);
+
+  const body = ellipsoid(0.42, 0.44, 0.55, white, 16);
+  body.position.y = 0.66;
+  g.add(body);
+
+  const head = new THREE.Group();
+  head.position.set(0, 1.12, 0.26);
+  g.add(head);
+  const skull = ellipsoid(0.24, 0.26, 0.24, white, 14);
+  head.add(skull);
+  const beak = cone(0.09, 0.24, beakM, 8);
+  beak.rotation.x = Math.PI / 2;
+  beak.position.set(0, -0.02, 0.28);
+  head.add(beak);
+  for (let i = 0; i < 3; i++) {
+    const c = ellipsoid(0.07, 0.11, 0.06, comb, 8);
+    c.position.set(0, 0.26, -0.08 + i * 0.09);
+    head.add(c);
+  }
+  const wattle = ellipsoid(0.06, 0.09, 0.05, comb, 8);
+  wattle.position.set(0, -0.2, 0.2);
+  head.add(wattle);
+  for (const sx of [-1, 1]) {
+    const eye = ellipsoid(0.05, 0.05, 0.04, skinMaterial(0x1d120a), 8);
+    eye.position.set(sx * 0.17, 0.06, 0.16);
+    head.add(eye);
+  }
+
+  const wings = [];
+  for (const sx of [-1, 1]) {
+    const w = ellipsoid(0.1, 0.24, 0.36, white, 12);
+    w.position.set(sx * 0.4, 0.72, 0.02);
+    g.add(w);
+    wings.push(w);
+  }
+  for (let i = 0; i < 3; i++) {
+    const t = cone(0.1, 0.42, i === 1 ? dark : white, 7);
+    t.position.set((i - 1) * 0.13, 0.9, -0.5);
+    t.rotation.x = -2.5 + (i - 1) * 0.12;
+    g.add(t);
+  }
+
+  const legs = [];
+  for (const sx of [-1, 1]) {
+    const leg = new THREE.Group();
+    leg.position.set(sx * 0.16, 0.36, 0);
+    const shank = capsule(0.055, 0.3, beakM, 8);
+    shank.position.y = -0.16;
+    leg.add(shank);
+    const foot = ellipsoid(0.1, 0.05, 0.16, beakM, 8);
+    foot.position.set(0, -0.34, 0.06);
+    leg.add(foot);
+    g.add(leg);
+    legs.push(leg);
+  }
+  return { group: g, head, wings, legs, mats: [white, comb, beakM, dark] };
+}
+
+function dodo() {
+  const g = new THREE.Group();
+  const plume = skinMaterial(0x9aa7bd);
+  const pale = skinMaterial(0xd7dced);
+  const beakM = skinMaterial(0xe9c15a);
+  const foot = skinMaterial(0xc9953f);
+
+  const body = ellipsoid(0.78, 0.84, 0.98, plume, 18);
+  body.position.y = 1.0;
+  g.add(body);
+  const chest = ellipsoid(0.56, 0.5, 0.42, pale, 14);
+  chest.position.set(0, 0.86, 0.6);
+  g.add(chest);
+
+  const head = new THREE.Group();
+  head.position.set(0, 1.86, 0.34);
+  g.add(head);
+  const skull = ellipsoid(0.36, 0.38, 0.4, plume, 16);
+  head.add(skull);
+  const hood = ellipsoid(0.33, 0.24, 0.3, pale, 12);
+  hood.position.set(0, 0.16, 0.06);
+  head.add(hood);
+  const upper = cone(0.17, 0.62, beakM, 10);
+  upper.rotation.x = Math.PI / 2 + 0.22;
+  upper.position.set(0, -0.02, 0.5);
+  head.add(upper);
+  const hook = ellipsoid(0.11, 0.14, 0.12, beakM, 10);
+  hook.position.set(0, -0.14, 0.74);
+  head.add(hook);
+  for (const sx of [-1, 1]) {
+    const eye = ellipsoid(0.07, 0.07, 0.05, skinMaterial(0x201812), 8);
+    eye.position.set(sx * 0.25, 0.1, 0.24);
+    head.add(eye);
+  }
+
+  const wings = [];
+  for (const sx of [-1, 1]) {
+    const w = ellipsoid(0.14, 0.3, 0.34, plume, 12);
+    w.position.set(sx * 0.7, 1.05, -0.02);
+    g.add(w);
+    wings.push(w);
+  }
+  for (let i = 0; i < 4; i++) {
+    const t = ellipsoid(0.1, 0.16, 0.3, pale, 10);
+    t.position.set((i - 1.5) * 0.17, 1.35 + Math.abs(i - 1.5) * 0.05, -0.86);
+    t.rotation.x = 0.5;
+    g.add(t);
+  }
+
+  const legs = [];
+  for (const sx of [-1, 1]) {
+    const leg = new THREE.Group();
+    leg.position.set(sx * 0.3, 0.52, 0);
+    const shank = capsule(0.11, 0.34, foot, 9);
+    shank.position.y = -0.2;
+    leg.add(shank);
+    const toe = ellipsoid(0.17, 0.08, 0.26, foot, 9);
+    toe.position.set(0, -0.46, 0.1);
+    leg.add(toe);
+    g.add(leg);
+    legs.push(leg);
+  }
+  return { group: g, head, wings, legs, mats: [plume, pale, beakM, foot] };
+}
+
+function bird() {
+  const g = new THREE.Group();
+  const coat = skinMaterial(0x4a78c8);
+  const belly = skinMaterial(0xfff0c2);
+  const beakM = skinMaterial(0xffb23d);
+
+  const body = ellipsoid(0.3, 0.28, 0.58, coat, 14);
+  body.position.y = 0.3;
+  g.add(body);
+  const front = ellipsoid(0.22, 0.2, 0.3, belly, 12);
+  front.position.set(0, 0.22, 0.28);
+  g.add(front);
+
+  const head = new THREE.Group();
+  head.position.set(0, 0.5, 0.46);
+  g.add(head);
+  head.add(ellipsoid(0.21, 0.21, 0.21, coat, 12));
+  const beak = cone(0.075, 0.28, beakM, 8);
+  beak.rotation.x = Math.PI / 2;
+  beak.position.set(0, -0.02, 0.26);
+  head.add(beak);
+  for (const sx of [-1, 1]) {
+    const eye = ellipsoid(0.045, 0.045, 0.035, skinMaterial(0x141019), 8);
+    eye.position.set(sx * 0.14, 0.06, 0.15);
+    head.add(eye);
+  }
+
+  // wings pivot at the shoulder so a flap is one rotation
+  const wings = [];
+  for (const sx of [-1, 1]) {
+    const pivot = new THREE.Group();
+    pivot.position.set(sx * 0.2, 0.36, 0.02);
+    const w = ellipsoid(0.62, 0.05, 0.3, coat, 12);
+    w.position.x = sx * 0.6;
+    pivot.add(w);
+    const tip = ellipsoid(0.3, 0.04, 0.16, belly, 10);
+    tip.position.set(sx * 1.16, 0, -0.06);
+    pivot.add(tip);
+    g.add(pivot);
+    wings.push(pivot);
+  }
+  const tail = ellipsoid(0.22, 0.04, 0.34, coat, 10);
+  tail.position.set(0, 0.32, -0.62);
+  g.add(tail);
+  return { group: g, head, wings, legs: [], mats: [coat, belly, beakM] };
+}
+
+function tortoise() {
+  const g = new THREE.Group();
+  const shellM = skinMaterial(0x4e7a3a);
+  const plate = skinMaterial(0x77a34c);
+  const hide = skinMaterial(0xb9a06a);
+
+  const shell = ellipsoid(0.92, 0.6, 1.08, shellM, 18);
+  shell.position.y = 0.66;
+  g.add(shell);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * TAU;
+    const scute = ellipsoid(0.22, 0.12, 0.22, plate, 10);
+    scute.position.set(Math.cos(a) * 0.5, 1.02, Math.sin(a) * 0.6);
+    g.add(scute);
+  }
+  const crown = ellipsoid(0.3, 0.14, 0.3, plate, 12);
+  crown.position.y = 1.16;
+  g.add(crown);
+  const belly = ellipsoid(0.86, 0.16, 1.0, hide, 14);
+  belly.position.y = 0.3;
+  g.add(belly);
+
+  const head = new THREE.Group();
+  head.position.set(0, 0.6, 0.92);
+  g.add(head);
+  head.add(ellipsoid(0.24, 0.22, 0.32, hide, 12));
+  for (const sx of [-1, 1]) {
+    const eye = ellipsoid(0.05, 0.05, 0.04, skinMaterial(0x1a1410), 8);
+    eye.position.set(sx * 0.14, 0.07, 0.2);
+    head.add(eye);
+  }
+
+  const legs = [];
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      const leg = new THREE.Group();
+      leg.position.set(sx * 0.62, 0.34, sz * 0.62);
+      const l = capsule(0.17, 0.16, hide, 9);
+      l.rotation.z = sx * 0.4;
+      leg.add(l);
+      g.add(leg);
+      legs.push(leg);
+    }
+  }
+  return { group: g, head, wings: [], legs, mats: [shellM, plate, hide] };
+}
+
+const BUILD = { ayam: chicken, dodo, burung: bird, kurakura: tortoise };
+
+// --------------------------------------------------------------- critter --
+
+class Critter {
+  constructor(scene, kind) {
+    this.scene = scene;
+    this.kind = kind;
+    this.cfg = WILDLIFE.kinds[kind];
+    const built = BUILD[kind]();
+    this.parts = built;
+    this.root = built.group;
+    this.root.scale.setScalar(this.cfg.scale);
+    this.root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    scene.add(this.root);
+
+    this.pos = new THREE.Vector3();
+    this.radius = this.cfg.radius * this.cfg.scale;
+    this.hitY = this.cfg.hitY * this.cfg.scale;
+    this.vel = new THREE.Vector3();
+    this.yaw = Math.random() * TAU;
+    this.phase = Math.random() * TAU;
+    this.target = new THREE.Vector3();
+    this.wanderFor = 0;
+    this.anger = 0;
+    this.attackCd = 0;
+    this.lunge = 0;
+    this.flash = 0;
+    this.tuck = 0;              // tortoise pulling in after a hit
+    this.alive = false;
+    this.dying = 0;
+    this.respawnIn = 0;
+    this.height = 0;            // flyers only
+    this.hp = this.cfg.hp;
+  }
+
+  get angry() { return this.anger > 0; }
+
+  place(pos) {
+    this.pos.copy(pos);
+    this.alive = true;
+    this.dying = 0;
+    this.hp = this.cfg.hp;
+    this.anger = 0;
+    this.attackCd = 0;
+    this.flash = 0;
+    this.tuck = 0;
+    this.vel.set(0, 0, 0);
+    this.height = this.cfg.fly ? rnd(...this.cfg.fly.cruise) : 0;
+    this.root.visible = true;
+    this.root.scale.setScalar(this.cfg.scale);
+    this.root.rotation.set(0, this.yaw, 0);
+    this._newWanderTarget();
+  }
+
+  _newWanderTarget() {
+    const a = Math.random() * TAU;
+    const r = Math.sqrt(Math.random()) * (WORLD.radius - 8);
+    this.target.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+    this.wanderFor = rnd(3, 8);
+  }
+
+  /** Returns the damage actually taken, so the caller can show a number. */
+  hit(amount, { knock = null, anger = true } = {}) {
+    if (!this.alive) return 0;
+    const dealt = amount * (1 - (this.cfg.armor || 0));
+    this.hp -= dealt;
+    this.flash = 0.3;
+    if (anger) this.anger = WILDLIFE.angerTime;
+    if (this.cfg.armor) this.tuck = 0.9;
+    if (knock) {
+      this.vel.addScaledVector(knock, 6 / (1 + (this.cfg.armor || 0) * 4));
+    }
+    if (this.hp <= 0) this._die();
+    return dealt;
+  }
+
+  _die() {
+    this.alive = false;
+    this.dying = 1.0;
+    this.respawnIn = rnd(...WILDLIFE.respawn);
+  }
+
+  /**
+   * One step. Returns the damage it lands on the player this frame (0 mostly).
+   * `threats` are the things it runs away from besides the player.
+   */
+  update(dt, player, world, threats, canHarm) {
+    if (!this.alive) {
+      if (this.dying > 0) {
+        this.dying -= dt * 1.4;
+        const u = Math.max(0, this.dying);
+        this.root.rotation.z = (1 - u) * 1.4;
+        this.root.position.y = this.cfg.fly ? this.height * u : 0;
+        if (u < 0.35) this.root.scale.setScalar(this.cfg.scale * (u / 0.35));
+        if (u <= 0) { this.root.visible = false; this.dying = 0; }
+      }
+      return 0;
+    }
+
+    this.phase += dt;
+    this.flash = Math.max(0, this.flash - dt * 3);
+    this.tuck = Math.max(0, this.tuck - dt);
+    this.anger = Math.max(0, this.anger - dt);
+    this.attackCd = Math.max(0, this.attackCd - dt);
+    this.lunge = Math.max(0, this.lunge - dt * 3.5);
+
+    const cfg = this.cfg;
+    const toPlayer = new THREE.Vector3(player.pos.x - this.pos.x, 0, player.pos.z - this.pos.z);
+    const distP = toPlayer.length();
+    let want = null;                 // direction we would like to move
+    let speed = cfg.speed * 0.35;
+    let damage = 0;
+
+    if (this.angry && player.alive) {
+      // charge the thing that hurt us
+      want = toPlayer.clone().normalize();
+      speed = cfg.speed * (cfg.rush && distP > 8 ? cfg.rush : 1);
+      if (distP < cfg.range + this.radius && this.attackCd <= 0) {
+        this.attackCd = cfg.attackCd;
+        this.lunge = 1;
+        if (canHarm && player.damage(cfg.damage, want.clone())) damage = cfg.damage;
+      }
+    } else {
+      // calm: bolt from anything big and close, otherwise potter about
+      let away = null;
+      if (cfg.flee && distP < WILDLIFE.fleeRange) {
+        away = toPlayer.clone().multiplyScalar(-1).normalize();
+      }
+      for (const t of threats) {
+        const dx = this.pos.x - t.pos.x, dz = this.pos.z - t.pos.z;
+        const d = Math.hypot(dx, dz);
+        if (d > WILDLIFE.rhinoFleeRange || d < 1e-3) continue;
+        const v = new THREE.Vector3(dx / d, 0, dz / d);
+        away = away ? away.add(v).normalize() : v;
+      }
+      if (away) {
+        want = away;
+        speed = cfg.speed;
+      } else {
+        this.wanderFor -= dt;
+        const toT = this.target.clone().sub(this.pos).setY(0);
+        if (this.wanderFor <= 0 || toT.length() < 2.5) this._newWanderTarget();
+        else want = toT.normalize();
+      }
+    }
+
+    // steer, with a little inertia so nothing snaps around
+    if (want) {
+      this.vel.x += (want.x * speed - this.vel.x) * Math.min(1, dt * 5);
+      this.vel.z += (want.z * speed - this.vel.z) * Math.min(1, dt * 5);
+      this.yaw += Math.atan2(Math.sin(Math.atan2(want.x, want.z) - this.yaw),
+        Math.cos(Math.atan2(want.x, want.z) - this.yaw)) * Math.min(1, dt * 7);
+    } else {
+      this.vel.multiplyScalar(Math.max(0, 1 - dt * 4));
+    }
+    this.pos.x += this.vel.x * dt;
+    this.pos.z += this.vel.z * dt;
+
+    // ground animals bump into scenery; flyers are above all of it
+    if (!cfg.fly) {
+      world.resolve(this.pos, this.radius);
+    } else {
+      const rr = Math.hypot(this.pos.x, this.pos.z);
+      const lim = WORLD.radius - 4;
+      if (rr > lim) { this.pos.x *= lim / rr; this.pos.z *= lim / rr; }
+      const wanted = this.angry ? cfg.fly.dive : this._cruise();
+      this.height += (wanted - this.height) * Math.min(1, dt * 1.6);
+    }
+
+    this._animate(dt);
+    return damage;
+  }
+
+  _cruise() {
+    const [lo, hi] = this.cfg.fly.cruise;
+    return lo + (hi - lo) * (0.5 + 0.5 * Math.sin(this.phase * 0.35));
+  }
+
+  _animate(dt) {
+    const speed = Math.hypot(this.vel.x, this.vel.z);
+    const cfg = this.cfg;
+    const g = this.root;
+    g.position.set(this.pos.x, this.height, this.pos.z);
+    g.rotation.set(0, this.yaw, 0);
+
+    const bob = Math.sin(this.phase * (4 + speed * 0.5));
+    if (cfg.fly) {
+      const flap = Math.sin(this.phase * (this.angry ? 16 : 9));
+      for (let i = 0; i < this.parts.wings.length; i++) {
+        this.parts.wings[i].rotation.z = (i ? -1 : 1) * (flap * 0.7 + 0.1);
+      }
+      g.position.y += bob * 0.22;
+      g.rotation.x = -this.vel.length() * 0.012 - (this.angry ? 0.18 : 0);
+    } else {
+      g.position.y = Math.abs(bob) * Math.min(0.22, speed * 0.035);
+      for (let i = 0; i < this.parts.legs.length; i++) {
+        const s = Math.sin(this.phase * (5 + speed * 0.7) + i * Math.PI * (this.parts.legs.length > 2 ? 0.5 : 1));
+        this.parts.legs[i].rotation.x = s * Math.min(0.9, 0.12 + speed * 0.09);
+      }
+      for (const w of this.parts.wings) w.rotation.x = bob * Math.min(0.5, speed * 0.05);
+    }
+
+    // head: bobs while walking, thrusts forward on a peck
+    const head = this.parts.head;
+    if (head) {
+      const base = head.userData.baseZ ?? (head.userData.baseZ = head.position.z);
+      const baseY = head.userData.baseY ?? (head.userData.baseY = head.position.y);
+      head.position.z = base + this.lunge * 0.55 - this.tuck * 0.7;
+      head.position.y = baseY + bob * 0.05 - this.tuck * 0.25;
+      head.rotation.x = this.lunge * 0.5;
+    }
+    for (const leg of this.parts.legs) leg.visible = this.tuck < 0.4;
+
+    const f = this.flash;
+    if (f > 0 || this._lit) {
+      for (const m of this.parts.mats) m.emissive?.setRGB(f * 0.7, f * 0.15, 0);
+      this._lit = f > 0;
+    }
+  }
+
+  dispose() {
+    this.scene.remove(this.root);
+    this.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+    for (const m of this.parts.mats) m.dispose();
+  }
+}
+
+// --------------------------------------------------------------- manager --
+
+export class Wildlife {
+  constructor(scene) {
+    this.scene = scene;
+    this.critters = [];
+    this._byKind = {};
+    for (let i = 0; i < WILDLIFE.total; i++) {
+      const kind = this._rollKind();
+      if (!kind) break;
+      const c = new Critter(scene, kind);
+      this._byKind[kind] = (this._byKind[kind] || 0) + 1;
+      this.critters.push(c);
+    }
+  }
+
+  /** Weighted pick, respecting each species' cap. */
+  _rollKind() {
+    const options = Object.entries(WILDLIFE.kinds)
+      .filter(([k, cfg]) => (this._byKind[k] || 0) < cfg.max);
+    if (!options.length) return null;
+    const total = options.reduce((a, [, cfg]) => a + cfg.weight, 0);
+    let r = Math.random() * total;
+    for (const [k, cfg] of options) { r -= cfg.weight; if (r <= 0) return k; }
+    return options[0][0];
+  }
+
+  /** Somewhere in the arena that is not right on top of the player. */
+  _spot(playerPos) {
+    for (let i = 0; i < 40; i++) {
+      const a = Math.random() * TAU;
+      const r = 18 + Math.sqrt(Math.random()) * (WORLD.radius - 22);
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      if (Math.hypot(x - playerPos.x, z - playerPos.z) > WILDLIFE.minSpawnDist) {
+        return new THREE.Vector3(x, 0, z);
+      }
+    }
+    return new THREE.Vector3(Math.cos(Math.random() * TAU) * 90, 0, Math.sin(Math.random() * TAU) * 90);
+  }
+
+  /** Put everybody back on the field — called when a run starts. */
+  reset(playerPos) {
+    for (const c of this.critters) {
+      c.respawnIn = 0;
+      c.place(this._spot(playerPos));
+    }
+  }
+
+  alive() { return this.critters.filter((c) => c.alive); }
+
+  /** Total damage the wildlife did to the player this frame. */
+  update(dt, player, world, threats, canHarm) {
+    let dmg = 0;
+    for (const c of this.critters) {
+      if (!c.alive && c.dying <= 0) {
+        c.respawnIn -= dt;
+        if (c.respawnIn <= 0) c.place(this._spot(player.pos));
+        continue;
+      }
+      dmg += c.update(dt, player, world, threats, canHarm);
+    }
+    return dmg;
+  }
+
+  dispose() {
+    for (const c of this.critters) c.dispose();
+    this.critters.length = 0;
+  }
+}

@@ -110,6 +110,12 @@
       <div><i>🎁</i><b>Peti Item</b><span>Dinamit / ranjau — Q</span></div>
       <div><i>🦏</i><b>Waspada Serudukan</b><span>Mengais tanah? Menepi!</span></div>
     </div>
+    <!-- The two choices that change what you are about to look at, right
+         above the button that starts it. Both lists come from js/config.js. -->
+    <div class="row pick">
+      <label class="ghost sel"><span>🗺️<i class="w">Arena</i></span><select id="sel-arena"></select></label>
+      <label class="ghost sel"><span>🎨<i class="w">Kulit</i></span><select id="sel-skin"></select></label>
+    </div>
     <button id="btn-resume-run" class="primary hidden">▶ LANJUTKAN</button>
     <button id="btn-start" class="primary">MULAI BERBURU</button>
     <!-- Two tidy grids rather than one wrapping flex row: things you open on
@@ -124,10 +130,10 @@
       <button id="btn-sound" class="ghost">🔊 Suara: ON</button>
       <label class="ghost sel">Musik
         <select id="sel-music">
-          <option value="ceria">1 · Padang Ceria</option>
-          <option value="stomp">2 · Jurassic Stomp</option>
-          <option value="chip">3 · Chiptune Rampage</option>
-          <option value="synth">4 · Synthwave Predator</option>
+          <option value="ceria">Padang Ceria</option>
+          <option value="stomp">Jurassic Stomp</option>
+          <option value="chip">Chiptune</option>
+          <option value="synth">Synthwave</option>
           <option value="off">Mati</option>
         </select>
       </label>
@@ -138,8 +144,6 @@
           <option value="high">Tinggi</option>
         </select>
       </label>
-      <!-- filled from ARENAS in js/config.js -->
-      <label class="ghost sel">Arena <select id="sel-arena"></select></label>
     </div>
     <p class="best">Skor terbaik: <b id="best-menu">0</b></p>
     <p class="legal">
@@ -220,10 +224,10 @@
     <div class="row">
       <label class="ghost sel">Musik
         <select id="sel-music-2">
-          <option value="ceria">1 · Padang Ceria</option>
-          <option value="stomp">2 · Jurassic Stomp</option>
-          <option value="chip">3 · Chiptune Rampage</option>
-          <option value="synth">4 · Synthwave Predator</option>
+          <option value="ceria">Padang Ceria</option>
+          <option value="stomp">Jurassic Stomp</option>
+          <option value="chip">Chiptune</option>
+          <option value="synth">Synthwave</option>
           <option value="off">Mati</option>
         </select>
       </label>

@@ -24,6 +24,13 @@ Semburkan api, gigit, dan sabetkan ekor untuk bertahan gelombang demi gelombang.
   atau **💣 ranjau** (dipasang di tanah, meledak saat badak lewat, 2×). Kamu membawa satu
   item sekaligus dan memakainya dengan **Q**. Undiannya ala game balap kart: bobot item
   yang terakhir kamu ambil dipotong jadi seperempat, jadi yang muncul cenderung berganti.
+- **Satwa liar** yang menghuni arena: 🐔 ayam, 🦤 dodo, 🐦 burung yang terbang, dan
+  🐢 kura-kura. Mereka berkeliaran dan kabur kalau kamu mendekat — tapi kalau diusik
+  mereka balas menyerang beberapa saat, lalu tenang lagi. Bisa dibunuh, **tidak memberi
+  skor sama sekali**, dan muncul lagi di tempat lain setelah belasan detik. Sengaja
+  dibatasi sembilan ekor sekaligus supaya arena terasa hidup tanpa jadi ramai.
+- **Empat kulit T-Rex** yang bisa dipilih di menu: 🦖 Jingga Klasik, 🌿 Zamrud Rimba,
+  🌋 Naga Magma, dan ❄️ Raja Salju. Murni tampilan — ukuran dan kekuatannya sama persis.
 - **Badak yang menyeruduk** — mereka mengais tanah dulu (aba-aba), lalu menerjang lurus.
   Menepilah; kalau mereka menabrak pohon atau batu mereka pusing dan menerima kerusakan ekstra.
 - **Empat jenis badak**: anakan yang gesit, banteng, badak berbaju zirah, dan **Matriark** raksasa
@@ -192,6 +199,7 @@ js/main.js          # loop utama, gelombang, resolusi serangan
 js/rex.js           # model + animasi + gerak T-Rex
 js/rhino.js         # model + AI badak (kejar → aba-aba → seruduk → pusing)
 js/world.js         # arena (3 tema), langit, pohon, batu, rumput
+js/wildlife.js      # satwa liar: ayam, dodo, burung, kura-kura
 js/geom.js          # pembangun permukaan halus (sapuan tabung, elipsoid, kapsul)
 js/fireball.js      # proyektil bola api (lintasan melengkung + ledakan)
 js/scores.js        # papan skor lokal (localStorage)

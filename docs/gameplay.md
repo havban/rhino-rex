@@ -141,6 +141,46 @@ screen gets an arrow at the screen edge pointing at it. The cap is deliberate:
 sixteen arrows would be noise, but hunting the final straggler across a
 150-unit arena is the moment you actually need help.
 
+## Wildlife
+
+Four species live in the arena and are **worth no score at all** — they are
+scenery that can bite back. Nine are alive at a time across the whole 150-unit
+arena, which is sparse on purpose: the rhinos are the fight, these are the
+texture.
+
+| Animal | HP | Speed | Bite | Notes |
+| --- | --- | --- | --- | --- |
+| 🐔 Ayam | 20 | 8.5 | 4 | bolts the moment you get within 16 units |
+| 🦤 Dodo | 70 | 5.6 | 10 | slow, but rushes at 1.7× once it is cross |
+| 🐦 Burung | 14 | 14 | 5 | cruises 7–13 units up, drops to 2.6 to dive at you |
+| 🐢 Kura-kura | 120 | 2.2 | 8 | never flees; 55 % armour, and pulls its head in when hit |
+
+Behaviour is three states. **Calm**: wander between random points, and run
+from the player (within 16 units) or any rhino (within 13). **Cross**: any hit
+turns the animal on you for 8 seconds — it closes and bites on its own
+cooldown, then calms down. **Down**: it topples, and reappears somewhere at
+least 34 units from you after 16–30 seconds, so the arena never empties.
+
+Everything hurts them — bite, tail, breath, fireball, dynamite and mines — and
+none of it scores, counts as a kill, feeds the combo, or drops a melon. They
+do not block your movement either; only the scenery does. In co-op each client
+runs its own wildlife locally, since nothing about them affects the run.
+
+## T-Rex skins
+
+Four looks, picked above the start button and remembered in `rr.skin`. Purely
+cosmetic — same size, same reach, same damage.
+
+| Skin | Look |
+| --- | --- |
+| 🦖 Jingga Klasik | the original orange with a cream belly |
+| 🌿 Zamrud Rimba | jungle green, lime belly, dark green stripes |
+| 🌋 Naga Magma | near-black hide with molten orange stripes and amber eyes |
+| ❄️ Raja Salju | pale ice-white with cool blue stripes |
+
+The body's three colours are baked into the mesh's vertex colours when it is
+swept, so `Rex.setSkin()` rebuilds the model. Only ever done from the menu.
+
 ## Arenas
 
 Three places to fight, picked from **Arena** in the menu and remembered in
