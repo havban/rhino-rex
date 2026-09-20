@@ -226,7 +226,7 @@ export const CAMERA = {
  * Kept deliberately few: the rhinos are the fight, these are the texture.
  */
 export const WILDLIFE = {
-  total: 9,                 // alive at once, across the whole arena
+  total: 15,                // alive at once, across the whole arena
   respawn: [16, 30],        // seconds before a dead one reappears somewhere else
   fleeRange: 16,            // how close you get before a calm animal bolts
   rhinoFleeRange: 13,       // ... and how close a charging rhino has to be
@@ -234,25 +234,35 @@ export const WILDLIFE = {
   minSpawnDist: 34,         // never pop into existence in your lap
   kinds: {
     ayam: {
-      label: 'Ayam', max: 3, weight: 3,
+      label: 'Ayam', max: 4, min: 2, weight: 3,
       hp: 20, speed: 8.5, scale: 2.0, radius: 0.8, hitY: 1.5,
       damage: 4, range: 3.0, attackCd: 1.1, flee: true,
     },
     dodo: {
-      label: 'Dodo', max: 2, weight: 2,
+      label: 'Dodo', max: 3, min: 1, weight: 2,
       hp: 70, speed: 5.6, scale: 1.9, radius: 1.1, hitY: 2.3,
       damage: 10, range: 3.6, attackCd: 1.7, flee: true, rush: 1.7,
     },
     burung: {
-      label: 'Burung', max: 3, weight: 3,
+      label: 'Burung', max: 5, min: 2, weight: 3.4,
       hp: 14, speed: 14, scale: 1.7, radius: 0.8, hitY: 0.8,
       damage: 5, range: 3.2, attackCd: 2.0, flee: true,
       fly: { cruise: [7, 13], dive: 2.6 },
     },
     kurakura: {
-      label: 'Kura-kura', max: 2, weight: 1.4,
+      label: 'Kura-kura', max: 2, min: 1, weight: 1.2,
       hp: 120, speed: 2.2, scale: 2.0, radius: 1.0, hitY: 1.2,
       damage: 8, range: 2.8, attackCd: 1.6, flee: false, armor: 0.55,
+    },
+    babi: {
+      label: 'Babi Hutan', max: 3, min: 1, weight: 2.2,
+      hp: 85, speed: 9.5, scale: 1.7, radius: 1.0, hitY: 1.6,
+      damage: 11, range: 3.2, attackCd: 1.5, flee: true, rush: 1.9,
+    },
+    biawak: {
+      label: 'Biawak', max: 3, min: 1, weight: 2,
+      hp: 50, speed: 11, scale: 1.6, radius: 0.9, hitY: 0.9,
+      damage: 7, range: 3.4, attackCd: 1.3, flee: true,
     },
   },
 };
@@ -277,6 +287,11 @@ export const FORMS = {
   bersayap: {
     label: 'Rex Bersayap', short: 'Bersayap', glyph: '\u{1F985}', creature: 'theropod',
     girth: 0.93, tail: 1.06, head: 0.97, arms: 0.9, wings: true, skin: 'salju',
+    // The one form that is not purely cosmetic: those wings work. Tap jump in
+    // the air to beat them, three times before you have to land, and fall
+    // slowly in between. Attacks reach from where you are, so hovering out of
+    // range means hitting nothing - height buys you escape, not free damage.
+    flight: { flaps: 3, impulse: 10, ceiling: 24, glide: 0.46, cooldown: 0.26 },
   },
   gojira: {
     label: 'Gojira', short: 'Gojira', glyph: '\u{1F995}', creature: 'kaiju',
@@ -287,7 +302,7 @@ export const FORMS = {
   kong: {
     label: 'Kong', short: 'Kong', glyph: '\u{1F98D}', creature: 'ape',
     tail: 0.12, skin: 'kelam', hipScale: 0.77, scale: 1.15,
-    pose: { body: -0.62, spine: -0.06, chest: -0.12, neck1: -0.5, neck2: -0.12, head: 0.8, tail0: 0, tail: 0 },
+    pose: { body: -0.62, spine: -0.06, chest: -0.14, neck1: -0.72, neck2: -0.2, head: 0.92, tail0: 0, tail: 0 },
     leg: { hip: 0.34, knee: 0.5, ankle: -0.34 },
   },
 };
@@ -302,7 +317,7 @@ export const SKINS = {
   zamrud: { label: 'Zamrud Rimba', short: 'Zamrud', glyph: '\u{1F33F}', body: 0x46b45f, belly: 0xeaf6b4, stripe: 0x1d6b3c, tongue: 0xe8748c, eye: 0xfff7d8, pupil: 0x10240f, plate: 0xd6f27a, wing: 0x2c7a45 },
   magma:  { label: 'Naga Magma', short: 'Magma', glyph: '\u{1F30B}', body: 0x4b3436, belly: 0xffab4d, stripe: 0xff4d0a, tongue: 0xff9a6a, eye: 0xffd070, pupil: 0x140a06, plate: 0xff7a1e, wing: 0x7a2c1e },
   badai:  { label: 'Badai Baja', short: 'Badai', glyph: '\u{26A1}', body: 0x3d4653, belly: 0x8fa2b5, stripe: 0x252d38, tongue: 0xd98aa0, eye: 0xd6f6ff, pupil: 0x0c1218, plate: 0xa8ecff, wing: 0x2b3540 },
-  kelam:  { label: 'Bulu Kelam', short: 'Kelam', glyph: '\u{1F98D}', body: 0x463a31, belly: 0xa5896a, stripe: 0x2c221b, tongue: 0xd98aa0, eye: 0xffeccb, pupil: 0x140d08, plate: 0x9aa2ab, wing: 0x392c23 },
+  kelam:  { label: 'Bulu Kelam', short: 'Kelam', glyph: '\u{1F98D}', body: 0x55463a, belly: 0xa5896a, stripe: 0x2c221b, tongue: 0xd98aa0, eye: 0xffeccb, pupil: 0x140d08, plate: 0x9aa2ab, wing: 0x392c23, face: 0x181310 },
   salju:  { label: 'Raja Salju', short: 'Salju', glyph: '\u{2744}\uFE0F', body: 0xe4edf8, belly: 0xffffff, stripe: 0x74a8dd, tongue: 0xf3a0b4, eye: 0xeaf6ff, pupil: 0x12233a, plate: 0xbfe0ff, wing: 0x8fbde8 },
 };
 

@@ -245,7 +245,131 @@ function tortoise() {
   return { group: g, head, wings: [], legs, mats: [shellM, plate, hide] };
 }
 
-const BUILD = { ayam: chicken, dodo, burung: bird, kurakura: tortoise };
+function boar() {
+  const g = new THREE.Group();
+  const hide = skinMaterial(0x6d5340);
+  const dark = skinMaterial(0x4a382b);
+  const tusk = skinMaterial(0xfdf3d8);
+  const snoutM = skinMaterial(0x8a6a52);
+
+  const body = ellipsoid(0.62, 0.66, 1.05, hide, 16);
+  body.position.y = 0.92;
+  g.add(body);
+  const shoulder = ellipsoid(0.68, 0.72, 0.6, hide, 14);
+  shoulder.position.set(0, 1.02, 0.45);
+  g.add(shoulder);
+
+  // a bristly ridge down the spine, which is what says "boar" at a glance
+  for (let i = 0; i < 6; i++) {
+    const bristle = cone(0.09, 0.42 - i * 0.03, dark, 5);
+    bristle.position.set(0, 1.62 - i * 0.04, 0.62 - i * 0.26);
+    bristle.rotation.x = -0.35;
+    g.add(bristle);
+  }
+
+  const head = new THREE.Group();
+  head.position.set(0, 0.98, 0.95);
+  g.add(head);
+  head.add(ellipsoid(0.42, 0.42, 0.5, hide, 14));
+  const snout = ellipsoid(0.26, 0.24, 0.42, snoutM, 12);
+  snout.position.set(0, -0.14, 0.52);
+  head.add(snout);
+  for (const sx of [-1, 1]) {
+    const ear = cone(0.13, 0.3, dark, 6);
+    ear.position.set(sx * 0.3, 0.38, -0.05);
+    ear.rotation.set(-0.3, 0, sx * 0.3);
+    head.add(ear);
+    const t = cone(0.06, 0.34, tusk, 6);
+    t.position.set(sx * 0.2, -0.16, 0.6);
+    t.rotation.set(-0.5, 0, sx * -0.35);
+    head.add(t);
+    const eye = ellipsoid(0.06, 0.06, 0.05, skinMaterial(0x16100b), 8);
+    eye.position.set(sx * 0.3, 0.12, 0.3);
+    head.add(eye);
+  }
+
+  const legs = [];
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      const leg = new THREE.Group();
+      leg.position.set(sx * 0.36, 0.52, sz * 0.5);
+      const l = capsule(0.13, 0.42, dark, 8);
+      l.position.y = -0.22;
+      leg.add(l);
+      const hoof = ellipsoid(0.15, 0.1, 0.17, skinMaterial(0x2a2119), 8);
+      hoof.position.y = -0.48;
+      leg.add(hoof);
+      g.add(leg);
+      legs.push(leg);
+    }
+  }
+  const tail = capsule(0.05, 0.26, dark, 6);
+  tail.position.set(0, 1.1, -1.02);
+  tail.rotation.x = 0.5;
+  g.add(tail);
+  return { group: g, head, wings: [], legs, mats: [hide, dark, tusk, snoutM] };
+}
+
+function monitor() {
+  const g = new THREE.Group();
+  const scale = skinMaterial(0x5a6448);
+  const pale = skinMaterial(0x9aa477);
+  const tongueM = skinMaterial(0xd4576a);
+
+  const body = ellipsoid(0.44, 0.34, 1.0, scale, 16);
+  body.position.y = 0.5;
+  g.add(body);
+  // a long tail in three tapering segments
+  for (let i = 0; i < 3; i++) {
+    const seg = ellipsoid(0.26 - i * 0.07, 0.2 - i * 0.05, 0.55 - i * 0.1, scale, 10);
+    seg.position.set(0, 0.48 - i * 0.04, -1.1 - i * 0.85);
+    g.add(seg);
+  }
+  const back = ellipsoid(0.3, 0.14, 0.7, pale, 10);
+  back.position.set(0, 0.78, 0.1);
+  g.add(back);
+
+  const head = new THREE.Group();
+  head.position.set(0, 0.52, 1.0);
+  g.add(head);
+  head.add(ellipsoid(0.26, 0.2, 0.42, scale, 12));
+  const jaw = ellipsoid(0.2, 0.09, 0.34, pale, 10);
+  jaw.position.set(0, -0.14, 0.1);
+  head.add(jaw);
+  const tongue = capsule(0.025, 0.24, tongueM, 6);
+  tongue.position.set(0, -0.08, 0.6);
+  tongue.rotation.x = Math.PI / 2;
+  head.add(tongue);
+  for (const sx of [-1, 1]) {
+    const eye = ellipsoid(0.07, 0.07, 0.06, skinMaterial(0xf2d24b), 8);
+    eye.position.set(sx * 0.2, 0.12, 0.12);
+    head.add(eye);
+    const pupil = ellipsoid(0.03, 0.05, 0.03, skinMaterial(0x14100a), 8);
+    pupil.position.set(sx * 0.24, 0.12, 0.17);
+    head.add(pupil);
+  }
+
+  // splayed, lizard-fashion, so it reads low and wide
+  const legs = [];
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      const leg = new THREE.Group();
+      leg.position.set(sx * 0.42, 0.34, sz * 0.52);
+      const upper = capsule(0.1, 0.3, scale, 8);
+      upper.rotation.z = sx * 1.0;
+      upper.position.set(sx * 0.16, 0, 0);
+      leg.add(upper);
+      const foot = ellipsoid(0.16, 0.06, 0.18, scale, 8);
+      foot.position.set(sx * 0.34, -0.22, 0.04);
+      leg.add(foot);
+      g.add(leg);
+      legs.push(leg);
+    }
+  }
+  return { group: g, head, wings: [], legs, mats: [scale, pale, tongueM] };
+}
+
+const BUILD = { ayam: chicken, dodo, burung: bird, kurakura: tortoise, babi: boar, biawak: monitor };
 
 // --------------------------------------------------------------- critter --
 
@@ -476,16 +600,27 @@ class Critter {
 // --------------------------------------------------------------- manager --
 
 export class Wildlife {
-  constructor(scene) {
+  constructor(scene, quality = 'high') {
     this.scene = scene;
     this.critters = [];
     this._byKind = {};
-    for (let i = 0; i < WILDLIFE.total; i++) {
+    // A phone draws these too, so thin the population on the lower presets.
+    const share = quality === 'low' ? 0.6 : quality === 'medium' ? 0.8 : 1;
+    const total = Math.max(4, Math.round(WILDLIFE.total * share));
+
+    const add = (kind) => {
+      this._byKind[kind] = (this._byKind[kind] || 0) + 1;
+      this.critters.push(new Critter(scene, kind));
+    };
+    // Seed the guaranteed few first: a weighted roll alone can leave a whole
+    // species missing for a run, and the birds are the ones you notice.
+    for (const [kind, cfg] of Object.entries(WILDLIFE.kinds)) {
+      for (let i = 0; i < (cfg.min || 0) && this.critters.length < total; i++) add(kind);
+    }
+    while (this.critters.length < total) {
       const kind = this._rollKind();
       if (!kind) break;
-      const c = new Critter(scene, kind);
-      this._byKind[kind] = (this._byKind[kind] || 0) + 1;
-      this.critters.push(c);
+      add(kind);
     }
   }
 

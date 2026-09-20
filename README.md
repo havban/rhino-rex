@@ -24,17 +24,23 @@ Semburkan api, gigit, dan sabetkan ekor untuk bertahan gelombang demi gelombang.
   atau **💣 ranjau** (dipasang di tanah, meledak saat badak lewat, 2×). Kamu membawa satu
   item sekaligus dan memakainya dengan **Q**. Undiannya ala game balap kart: bobot item
   yang terakhir kamu ambil dipotong jadi seperempat, jadi yang muncul cenderung berganti.
-- **Satwa liar** yang menghuni arena: 🐔 ayam, 🦤 dodo, 🐦 burung yang terbang, dan
-  🐢 kura-kura. Mereka berkeliaran dan kabur kalau kamu mendekat — tapi kalau diusik
-  mereka balas menyerang beberapa saat, lalu tenang lagi. Bisa dibunuh, **tidak memberi
-  skor sama sekali**, dan muncul lagi di tempat lain setelah belasan detik. Sengaja
-  dibatasi sembilan ekor sekaligus supaya arena terasa hidup tanpa jadi ramai.
-- **Empat sosok pemburu** yang bisa dipilih di menu: 🦖 T-Rex, 🦅 Rex Bersayap (sayap
-  membran yang melipat saat berjalan dan terbentang saat melompat), 🦕 Gojira (kaiju
+- **Satwa liar** yang menghuni arena: 🐔 ayam, 🦤 dodo, 🐦 burung yang terbang,
+  🐢 kura-kura, 🐗 babi hutan bertaring, dan 🦎 biawak yang gesit. Mereka berkeliaran
+  dan kabur kalau kamu mendekat — tapi kalau diusik mereka balas menyerang beberapa
+  saat, lalu tenang lagi. Bisa dibunuh, **tidak memberi skor sama sekali**, dan muncul
+  lagi di tempat lain setelah belasan detik. Jumlahnya dibatasi (15 di grafis tinggi,
+  12 sedang, 9 rendah) supaya arena terasa hidup tanpa jadi sesak.
+- **Empat sosok pemburu** yang bisa dipilih di menu: 🦖 T-Rex, 🦅 **Rex Bersayap yang
+  benar-benar bisa terbang** (lompat, lalu ketuk tombol lompat lagi di udara — tiga
+  kepakan sebelum harus mendarat, jumlahnya tertera di tombol; di sela kepakan kamu
+  melayang turun pelan). Jangkauan serangan dihitung dari posisimu termasuk ketinggian,
+  jadi melayang tinggi membuatmu aman tapi seranganmu tidak sampai. 🦕 Gojira (kaiju
   bertubuh tegak dengan tiga baris sirip punggung dari leher sampai ujung ekor), dan
-  🦍 Kong (kera raksasa: tanpa ekor, punggung perak, lengan sampai ke tanah). Gojira dan
-  Kong dibangun sebagai makhluk tersendiri, bukan T-Rex yang dipermak. **Murni
-  tampilan** — jangkauan, kerusakan, dan kecepatannya sama persis.
+  🦍 Kong (gorila raksasa: tanpa ekor, punuk bahu dengan punggung perak, wajah hitam
+  berdahi tebal dan tengkorak bersirip, telinga kecil, telapak tangan hitam). Gojira dan
+  Kong dibangun sebagai makhluk tersendiri, bukan T-Rex yang dipermak. Selain sayap
+  Rex Bersayap, semuanya **murni tampilan** — jangkauan, kerusakan, dan kecepatannya
+  sama persis.
 - **Enam kulit** yang bisa dipadukan dengan sosok mana pun: 🦖 Jingga Klasik, 🌿 Zamrud
   Rimba, 🌋 Naga Magma, ❄️ Raja Salju, ⚡ Badai Baja, dan 🦍 Bulu Kelam. Tiap sosok datang
   dengan kulit khasnya, tapi kamu bebas menggantinya.

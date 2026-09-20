@@ -143,10 +143,9 @@ sixteen arrows would be noise, but hunting the final straggler across a
 
 ## Wildlife
 
-Four species live in the arena and are **worth no score at all** — they are
-scenery that can bite back. Nine are alive at a time across the whole 150-unit
-arena, which is sparse on purpose: the rhinos are the fight, these are the
-texture.
+Six species live in the arena and are **worth no score at all** — they are
+scenery that can bite back. Fifteen are alive at a time on the high preset,
+twelve on medium and nine on low, since a phone has to draw them too.
 
 | Animal | HP | Speed | Bite | Notes |
 | --- | --- | --- | --- | --- |
@@ -154,6 +153,11 @@ texture.
 | 🦤 Dodo | 70 | 5.6 | 10 | slow, but rushes at 1.7× once it is cross |
 | 🐦 Burung | 14 | 14 | 5 | cruises 7–13 units up, drops to 2.6 to dive at you |
 | 🐢 Kura-kura | 120 | 2.2 | 8 | never flees; 55 % armour, and pulls its head in when hit |
+| 🐗 Babi Hutan | 85 | 9.5 | 11 | bristled back and tusks; rushes at 1.9× when cross |
+| 🦎 Biawak | 50 | 11 | 7 | long, low and quick, with a tail half its length |
+
+Each species has a guaranteed minimum in the population, so a run never comes
+up with no birds in the sky; the rest of the slots are a weighted roll.
 
 Behaviour is three states. **Calm**: wander between random points, and run
 from the player (within 16 units) or any rhino (within 13). **Cross**: any hit
@@ -168,18 +172,18 @@ runs its own wildlife locally, since nothing about them affects the run.
 
 ## Hunters and skins
 
-Two independent choices, both above the start button, both **purely
-cosmetic** — same reach, same damage, same speed, same collision radius. A
-Kong bites for exactly what a T-Rex bites for.
+Two independent choices, both above the start button. Damage, reach, speed
+and collision radius are identical for every one of them — a Kong bites for
+exactly what a T-Rex bites for. **One exception: Rex Bersayap can fly.**
 
 **Form** (`rr.form`) changes the silhouette:
 
 | Form | Creature |
 | --- | --- |
 | 🦖 T-Rex | the original theropod |
-| 🦅 Rex Bersayap | the same theropod, slimmer, with membrane wings that tuck against the ribs at a walk and spread when you jump |
+| 🦅 Rex Bersayap | the same theropod, slimmer, with working membrane wings — tucked against the ribs on the ground, held out level in the air |
 | 🦕 Gojira | a kaiju, built separately: upright stance, barrel chest, column legs, a tail as thick as the body, three rows of maple-leaf plates from neck to tail tip, blunt broad skull |
-| 🦍 Kong | an ape, built separately: no tail at all, heavy shoulder hump with a silverback saddle, arms that reach the ground with knuckles, short bowed legs, flat face with a heavy brow and a crested skull |
+| 🦍 Kong | a gorilla, built separately: no tail at all, a shoulder-to-hip wedge, heavy shoulder hump with a silverback saddle shaded into the fur, black leather face and hands, heavy brow, sagittal crest, small ears, arms that reach the ground and end in knuckles |
 
 **Skin** (`rr.skin`) changes the colours:
 
@@ -205,6 +209,21 @@ A skin is three colours baked into the mesh's vertex colours as it is swept,
 and the tail length changes the skeleton itself, which is why `Rex.setForm()`
 and `Rex.setSkin()` rebuild the model rather than tint it. Only ever done from
 the menu; position, health and cooldowns live on the instance, not the model.
+
+### Flying
+
+Only Rex Bersayap. Jump to leave the ground, then **tap jump again in the air
+to beat the wings** — three beats before you have to land, shown as a count on
+the jump pad. Each beat is worth 10 units of lift, the ceiling is 24 units up,
+and in between beats you fall at 46 % of normal gravity, so you glide rather
+than drop. Landing gives the three beats back.
+
+Height is not free damage. **Every melee and breath attack measures its range
+from where you actually are**, altitude included, so hovering at 18 units puts
+a rhino six units away well outside a 7.2-unit bite. Tested: the same bite
+takes 26 HP from the ground and 0 from up there. The fireball still works from
+the air — it is lobbed, it arcs down, and it is the weapon with the four
+second cooldown. So wings buy you escape and repositioning, not a safe perch.
 
 ## Arenas
 

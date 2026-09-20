@@ -82,7 +82,7 @@ class Game {
     this.chase = new ChaseCamera(this.camera);
 
     this.world = new World(this.scene, this.quality, this.arena);
-    this.wildlife = new Wildlife(this.scene);
+    this.wildlife = new Wildlife(this.scene, this.quality);
     this.rex = new Rex(this.scene, this.skin, this.form);
     this.fx = new FX(this.scene, this.camera, $('fx-layer'));
     this.audio = new Audio();
@@ -888,10 +888,13 @@ class Game {
     const cfg = ATTACK[type];
     const origin = this.rex.pos.clone().setY(this.rex.y + 2.2);
     const fwd = this.rex.forward;
+    // Height counts against reach. Without this a flyer could hover out of
+    // everything's way and still land every blow.
+    const up = Math.max(0, this.rex.y - 1.5);
     let hits = 0;
     for (const r of this.livingRhinos()) {
       const to = r.pos.clone().sub(origin).setY(0);
-      const d = to.length() - r.radius;
+      const d = Math.hypot(to.length(), up) - r.radius;
       if (d > cfg.range) continue;
       to.normalize();
       if (fwd.dot(to) < Math.cos(cfg.halfAngle)) continue;
@@ -910,7 +913,7 @@ class Game {
     // the wildlife is in the way too; it just does not score
     for (const c of this.wildlife.alive()) {
       const to = new THREE.Vector3(c.pos.x - origin.x, 0, c.pos.z - origin.z);
-      const d = to.length() - c.radius;
+      const d = Math.hypot(to.length(), up) - c.radius;
       if (d > cfg.range) continue;
       to.normalize();
       if (fwd.dot(to) < Math.cos(cfg.halfAngle)) continue;
@@ -921,7 +924,7 @@ class Game {
     if (type === 'tail') {
       for (const o of this.world.obstacles) {
         if (!o.alive || o.hp === undefined) continue;
-        const d = Math.hypot(o.pos.x - this.rex.pos.x, o.pos.z - this.rex.pos.z) - o.radius;
+        const d = Math.hypot(o.pos.x - this.rex.pos.x, o.pos.z - this.rex.pos.z, up) - o.radius;
         if (d < cfg.range) this.world.damage(o, SCENERY.tailDamage, 'smash', this.fx);
       }
       this.fx.ring(this.rex.pos.clone().setY(0.6), 0xffd98a);
@@ -1109,11 +1112,12 @@ class Game {
     const flat = this.rex.pos.clone().setY(0);
     const fwd = this.rex.forward;
     const cosHalf = Math.cos(cfg.halfAngle);
+    const up = Math.max(0, this.rex.y - 1.5);       // breathing from up there reaches less far
 
     for (const o of this.world.obstacles) {
       if (!o.alive || o.hp === undefined) continue;
       const to = new THREE.Vector3(o.pos.x - flat.x, 0, o.pos.z - flat.z);
-      const d = to.length() - o.radius;
+      const d = Math.hypot(to.length(), up) - o.radius;
       if (d > cfg.range) continue;
       to.normalize();
       if (d > 0.5 && fwd.dot(to) < cosHalf) continue;
@@ -1121,7 +1125,7 @@ class Game {
     }
     for (const r of this.livingRhinos()) {
       const to = r.pos.clone().setY(0).sub(flat);
-      const d = to.length() - r.radius;
+      const d = Math.hypot(to.length(), up) - r.radius;
       if (d > cfg.range) continue;
       to.normalize();
       if (d > 0.5 && fwd.dot(to) < cosHalf) continue;
@@ -1134,7 +1138,7 @@ class Game {
     }
     for (const c of this.wildlife.alive()) {
       const to = new THREE.Vector3(c.pos.x - flat.x, 0, c.pos.z - flat.z);
-      const d = to.length() - c.radius;
+      const d = Math.hypot(to.length(), up) - c.radius;
       if (d > cfg.range) continue;
       to.normalize();
       if (d > 0.5 && fwd.dot(to) < cosHalf) continue;
@@ -1333,6 +1337,7 @@ class Game {
     this._updateMines(dt);
 
     const hitEvent = this.rex.update(dt, input, this.chase.yaw, this.world);
+    if (this.rex.flapped) { this.rex.flapped = false; this.audio.flap(); this.fx.dust(this.rex.pos.clone().setY(this.rex.y + 1.5), 0.8); }
     if (hitEvent === 'fireball') this._spawnBall();
     else if (hitEvent) this.coneHit(hitEvent);
     if (this.rex.breathing) this.fireTick(dt);
@@ -1639,6 +1644,16 @@ class Game {
       this.audio.pickup();
     }
     this._ballWasCooling = cooling;
+
+    // the winged form counts its remaining beats on the jump pad
+    const flight = FORMS[this.form].flight;
+    const flapCount = $('tb-jump-count');
+    if (flight) {
+      flapCount.classList.remove('hidden');
+      flapCount.textContent = String(this.rex.grounded ? flight.flaps : this.rex.flaps);
+    } else if (!flapCount.classList.contains('hidden')) {
+      flapCount.classList.add('hidden');
+    }
 
     const card = $('cd-item'), pad = $('tb-item');
     if (this.item) {

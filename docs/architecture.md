@@ -88,8 +88,11 @@ three body colours are baked into the vertex colours during the sweep and the
 tail length changes the skeleton, so both setters rebuild the model — cheap,
 and only ever triggered from the menu.
 
-Neither table can affect the fight: reach, damage and the collision radius all
-come from `ATTACK`/`REX`, never from the model.
+`SKINS` cannot affect the fight at all, and neither can `FORMS` except for one
+deliberate entry: `flight`, which only Rex Bersayap has. Reach, damage and the
+collision radius still come from `ATTACK`/`REX`, never from the model — and
+since every melee and breath check now folds the player's altitude into its
+range, a flyer gains height rather than free hits.
 
 ## Wildlife
 

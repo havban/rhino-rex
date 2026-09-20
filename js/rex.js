@@ -51,6 +51,10 @@ export class Rex {
     this.attack = null;
     this.attackYaw = 0;       // visual body twist during the tail spin
     this.cooldown = { bite: 0, tail: 0, fireball: 0 };
+    this.flaps = 0;               // wing beats left before this one has to land
+    this.flapCd = 0;
+    this.flapKick = 0;
+    this.flapped = false;
     this.breathing = false;
     this.roar = 0;
     this.hurtFlash = 0;
@@ -120,7 +124,8 @@ export class Rex {
       pupil: new THREE.MeshBasicMaterial({ color: sk.pupil }),
       tongue: skinMaterial(sk.tongue),
       plate: skinMaterial(sk.plate || sk.belly, { shininess: 26 }),
-      wing: skinMaterial(sk.wing || sk.stripe, { shininess: 10 }),
+      face: skinMaterial(sk.face || sk.stripe, { shininess: 34 }),
+      wing: skinMaterial(sk.wing || sk.stripe, { shininess: 10, side: THREE.DoubleSide }),
     };
 
     // ---- skeleton --------------------------------------------------------
@@ -474,21 +479,26 @@ export class Rex {
       this.arms.push({ arm, elbow, sx });
     }
 
-    // ---- wings: a membrane stretched over a leading edge and one finger ----
+    // ---- wings: a membrane on a leading edge and two fingers ---------------
     this.wings = [];
     if (f.wings) {
-      // Spelled out as four points rather than swept, because a wing is a
-      // flat sheet with a swept-back notch, not a surface of revolution.
+      // A wing is a sheet, so it is spelled out as points rather than swept.
+      // The membrane is double-sided: a single-sided one vanished whenever
+      // you saw the underside, which is most of the time from behind.
+      const SHOULDER = [0.25, 0.0, 0.75];
+      const TIP = [4.3, 0.95, -0.35];
+      const MID = [3.0, 0.5, -1.85];
+      const INNER = [1.5, 0.15, -2.35];
+      const ROOT = [0.3, 0.0, -2.1];
+      const mirror = (pt, sx) => [pt[0] * sx, pt[1], pt[2]];
+
       const membrane = (sx) => {
-        const pts = [
-          [0.2 * sx, 0.0, 0.7],     // shoulder, leading edge
-          [4.1 * sx, 0.8, -0.6],    // tip
-          [2.3 * sx, 0.3, -2.2],    // notch between the fingers
-          [0.3 * sx, 0.0, -2.4],    // trailing root, against the ribs
-        ];
-        const tri = sx > 0 ? [0, 1, 2, 0, 2, 3] : [0, 2, 1, 0, 3, 2];
-        const pos = new Float32Array(tri.length * 3);
-        tri.forEach((v, k) => { pos.set(pts[v], k * 3); });
+        const pts = [SHOULDER, TIP, MID, INNER, ROOT].map((pt) => mirror(pt, sx));
+        const fan = [[0, 1, 2], [0, 2, 3], [0, 3, 4]];
+        const pos = new Float32Array(fan.length * 9);
+        fan.forEach((tri, t) => {
+          (sx > 0 ? tri : [tri[0], tri[2], tri[1]]).forEach((v, k) => pos.set(pts[v], t * 9 + k * 3));
+        });
         const g = new THREE.BufferGeometry();
         g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
         g.computeVertexNormals();
@@ -496,27 +506,27 @@ export class Rex {
         m.castShadow = true;
         return m;
       };
-      const strut = (sx, from, to, r) => {
-        const a = new THREE.Vector3(...from), b2 = new THREE.Vector3(...to);
-        const len = a.distanceTo(b2);
-        const bone = capsule(r, Math.max(0.05, len - r * 2), this.mats.skin, 8);
-        bone.position.copy(a).lerp(b2, 0.5);
-        bone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b2.clone().sub(a).normalize());
+      const strut = (from, to, r) => {
+        const a = new THREE.Vector3(...from), b = new THREE.Vector3(...to);
+        const bone = capsule(r, Math.max(0.05, a.distanceTo(b) - r * 2), this.mats.skin, 8);
+        bone.position.copy(a).lerp(b, 0.5);
+        bone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
         return bone;
       };
 
       for (const sx of [-1, 1]) {
         const wing = new THREE.Group();
-        wing.position.set(sx * 0.85, 0.5, -0.1);
+        wing.position.set(sx * 0.9, 0.45, -0.05);
         this.chest.add(wing);
         wing.add(membrane(sx));
-        wing.add(strut(sx, [0.2 * sx, 0, 0.7], [4.1 * sx, 0.8, -0.6], 0.14));
+        wing.add(strut(mirror(SHOULDER, sx), mirror(TIP, sx), 0.15));   // leading edge
         const outer = new THREE.Group();
         wing.add(outer);
-        outer.add(strut(sx, [2.2 * sx, 0.4, -0.1], [2.3 * sx, 0.3, -2.2], 0.09));
-        const claw = cone(0.1, 0.5, this.mats.tooth, 7);
-        claw.position.set(sx * 4.2, 0.9, -0.5);
-        claw.rotation.z = sx * -1.2;
+        outer.add(strut(mirror([2.1, 0.45, -0.3], sx), mirror(MID, sx), 0.085));
+        outer.add(strut(mirror([1.0, 0.1, -0.5], sx), mirror(INNER, sx), 0.07));
+        const claw = cone(0.1, 0.44, this.mats.tooth, 7);
+        claw.position.set(sx * 4.45, 1.05, -0.3);
+        claw.rotation.z = sx * -1.15;
         wing.add(claw);
         this.wings.push({ wing, outer, sx });
       }
@@ -643,13 +653,32 @@ export class Rex {
     this.pos.z += this.vel.z * dt;
     world.resolve(this.pos, REX.radius);
 
-    if (input.consume('jump') && this.grounded && this.alive) {
-      this.vy = REX.jumpSpeed;
-      this.grounded = false;
+    const fly = FORMS[this.form].flight;
+    this.flapCd = Math.max(0, this.flapCd - dt);
+    if (input.consume('jump') && this.alive) {
+      if (this.grounded) {
+        this.vy = REX.jumpSpeed;
+        this.grounded = false;
+        if (fly) this.flaps = fly.flaps;
+      } else if (fly && this.flaps > 0 && this.flapCd <= 0 && this.y < fly.ceiling) {
+        this.vy = Math.max(this.vy, 0) + fly.impulse;
+        this.flaps -= 1;
+        this.flapCd = fly.cooldown;
+        this.flapKick = 1;            // the wings beat harder for a moment
+        this.flapped = true;          // drained by the game for the sound
+      }
     }
-    this.vy += WORLD.gravity * dt;
+    // gliding: a winged form falls slowly, but cannot climb past its ceiling
+    const falling = this.vy < 0;
+    this.vy += WORLD.gravity * (fly && !this.grounded && falling ? fly.glide : 1) * dt;
+    if (fly && this.y > fly.ceiling && this.vy > 0) this.vy = 0;
+    this.flapKick = Math.max(0, (this.flapKick || 0) - dt * 2.2);
     this.y += this.vy * dt;
-    if (this.y <= 0) { this.y = 0; this.vy = 0; this.grounded = true; }
+    if (this.y <= 0) {
+      this.y = 0; this.vy = 0;
+      if (!this.grounded && fly) this.flaps = fly.flaps;
+      this.grounded = true;
+    }
 
     this.speed = Math.hypot(this.vel.x, this.vel.z);
 
@@ -718,15 +747,16 @@ export class Rex {
     // wings: a lazy idle beat that turns into real flapping off the ground
     if (this.wings && this.wings.length) {
       const air = this.grounded ? 0 : 1;
-      const beat = Math.sin(this.phase * (air ? 2.6 : 0.9));
+      const beat = Math.sin(this.phase * (air ? 2.6 : 0.9)) * (1 + this.flapKick * 1.5);
       for (const w of this.wings) {
-        // tucked up and swept back on the ground; wide open in the air
-        const up = beat * (air ? 0.8 : 0.12);
+        // Folded against the ribs on the ground, held out level in the air
+        // with a shallow beat - a full-amplitude flap read as two sails.
+        const up = beat * (air ? 0.42 : 0.1);
         const fold = air ? 0 : 1 - Math.min(stride, 1) * 0.25;
-        w.wing.rotation.z = w.sx * (0.1 + up + fold * 0.7);
-        w.wing.rotation.y = w.sx * (air ? -0.12 : fold * 0.95);
-        w.wing.rotation.x = up * 0.25 - fold * 0.25;
-        w.outer.rotation.z = w.sx * (up * 0.4 + fold * 0.55);
+        w.wing.rotation.z = w.sx * (0.16 + up + fold * 1.0);
+        w.wing.rotation.y = w.sx * (air ? -0.14 : fold * 1.15);
+        w.wing.rotation.x = up * 0.2 - fold * 0.3;
+        w.outer.rotation.z = w.sx * (up * 0.45 + fold * 0.9);
       }
     }
 

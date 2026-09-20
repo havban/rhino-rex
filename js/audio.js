@@ -97,12 +97,16 @@ export class Audio {
   }
   pickup() { this._burst({ freq: 880, type: 'triangle', dur: 0.2, gain: 0.25, sweep: 1.6 }); }
 
+  /** A wing beat: a short downward whoosh of filtered noise. */
+  flap() { this._noiseBurst({ dur: 0.26, gain: 0.2, freq: 900, q: 0.7, sweepTo: 240 }); }
+
   // Wildlife. A short rising blip per species, falling and longer when one
   // goes down, so a chicken and a dodo never sound alike.
   squawk(kind = 'ayam', down = false) {
-    const base = kind === 'burung' ? 1180 : kind === 'ayam' ? 760 : kind === 'dodo' ? 300 : 210;
+    const base = kind === 'burung' ? 1180 : kind === 'ayam' ? 760
+      : kind === 'biawak' ? 540 : kind === 'babi' ? 360 : kind === 'dodo' ? 300 : 210;
     this._burst({
-      freq: base, type: kind === 'kurakura' ? 'sawtooth' : 'square',
+      freq: base, type: kind === 'kurakura' || kind === 'babi' ? 'sawtooth' : 'square',
       dur: down ? 0.34 : 0.13, gain: down ? 0.2 : 0.14,
       sweep: down ? 0.45 : 1.5, filter: { type: 'lowpass', freq: 2600 },
     });

@@ -248,17 +248,18 @@ export function buildApe(rex, f, hips, boneZ, body, sk) {
 
   // ---- torso: a barrel, widest across the shoulders ----------------------
   const radius = makeProfile([
-    { z: zBack, v: 0.45 }, { z: -1.0, v: 1.05 }, { z: -0.3, v: 1.42 },
-    { z: 0.5, v: 1.62 }, { z: 1.3, v: 1.74 }, { z: 2.0, v: 1.62 },
-    { z: 2.7, v: 1.15 }, { z: 3.2, v: 0.72 }, { z: zHead, v: 0.6 },
+    { z: zBack, v: 0.42 }, { z: -1.0, v: 1.0 }, { z: -0.3, v: 1.38 },
+    { z: 0.4, v: 1.66 }, { z: 1.0, v: 1.76 }, { z: 1.6, v: 1.7 },
+    { z: 2.2, v: 1.42 }, { z: 2.8, v: 0.94 }, { z: 3.3, v: 0.66 }, { z: zHead, v: 0.58 },
   ]);
+  // widest across the shoulders, narrow at the hips: the classic wedge
   const squashX = makeProfile([
-    { z: zBack, v: 0.9 }, { z: 0.2, v: 1.04 }, { z: 1.3, v: 1.2 },
-    { z: 2.4, v: 1.02 }, { z: zHead, v: 0.95 },
+    { z: zBack, v: 0.86 }, { z: -0.3, v: 0.98 }, { z: 0.6, v: 1.14 },
+    { z: 1.4, v: 1.3 }, { z: 2.4, v: 1.04 }, { z: zHead, v: 0.95 },
   ]);
   const centerY = makeProfile([
-    { z: zBack, v: -0.1 }, { z: 0.2, v: -0.18 }, { z: 1.3, v: -0.06 },
-    { z: 2.4, v: 0.12 }, { z: zHead, v: 0.18 },
+    { z: zBack, v: -0.1 }, { z: 0.2, v: -0.24 }, { z: 1.3, v: -0.04 },
+    { z: 2.4, v: 0.16 }, { z: zHead, v: 0.22 },
   ]);
   const cBody = new THREE.Color(sk.body);
   const cBelly = new THREE.Color(sk.belly);
@@ -274,8 +275,8 @@ export function buildApe(rex, f, hips, boneZ, body, sk) {
       out.lerp(cStripe, THREE.MathUtils.smoothstep(-s, 0.2, 0.9) * 0.5);
       // the silverback saddle: a band across the upper back only, between the
       // rump and the shoulders, gone well before the flanks
-      const saddle = THREE.MathUtils.smoothstep(z, -1.1, -0.35) * (1 - THREE.MathUtils.smoothstep(z, 0.9, 1.7));
-      out.lerp(cSilver, THREE.MathUtils.smoothstep(s, 0.62, 0.99) * saddle * 0.9);
+      const saddle = THREE.MathUtils.smoothstep(z, -1.2, -0.1) * (1 - THREE.MathUtils.smoothstep(z, 0.7, 1.9));
+      out.lerp(cSilver, THREE.MathUtils.smoothstep(s, 0.5, 1.0) * saddle * 0.72);
     },
   });
   const mesh = new THREE.SkinnedMesh(geo, M.body);
@@ -286,7 +287,7 @@ export function buildApe(rex, f, hips, boneZ, body, sk) {
 
   // heavy trapezius over the shoulders, which is what makes an ape an ape
   const hump = ellipsoid(1.45, 0.7, 1.2, M.skin, 16);
-  hump.position.set(0, 1.18, 0.35);
+  hump.position.set(0, 1.12, -0.05);
   rex.chest.add(hump);
   const rump = ellipsoid(1.25, 1.0, 1.0, M.skin, 14);
   rump.position.set(0, -0.15, -0.9);
@@ -298,34 +299,43 @@ export function buildApe(rex, f, hips, boneZ, body, sk) {
   rex.headBone.add(head);
   rex.head = head;
 
-  const brain = ellipsoid(0.66, 0.7, 0.66, M.skin, 16);
-  brain.position.set(0, 0.22, 0.1);
+  // furred braincase, rising to a sagittal crest front to back
+  const brain = ellipsoid(0.64, 0.66, 0.7, M.skin, 16);
+  brain.position.set(0, 0.2, 0.06);
   head.add(brain);
-  const crest = ellipsoid(0.12, 0.3, 0.5, M.stripe, 10);
-  crest.position.set(0, 0.84, 0.05);
+  const crest = ellipsoid(0.13, 0.26, 0.62, M.skin, 12);
+  crest.position.set(0, 0.76, 0.02);
   head.add(crest);
-  const face = ellipsoid(0.56, 0.5, 0.36, M.belly, 14);
-  face.position.set(0, -0.02, 0.6);
+  const cheekFur = ellipsoid(0.76, 0.46, 0.32, M.skin, 14);
+  cheekFur.position.set(0, 0.04, 0.02);
+  head.add(cheekFur);
+
+  // the face itself: flat, black, set into the fur
+  const face = ellipsoid(0.5, 0.52, 0.26, M.face, 16);
+  face.position.set(0, -0.04, 0.64);
   head.add(face);
-  const muzzle = ellipsoid(0.42, 0.34, 0.34, M.belly, 14);
-  muzzle.position.set(0, -0.22, 0.78);
-  head.add(muzzle);
-  const brow = ellipsoid(0.62, 0.17, 0.26, M.stripe, 14);
-  brow.position.set(0, 0.32, 0.62);
+  const brow = ellipsoid(0.56, 0.16, 0.22, M.face, 14);
+  brow.position.set(0, 0.34, 0.6);
   head.add(brow);
+  const muzzle = ellipsoid(0.36, 0.3, 0.26, M.face, 14);
+  muzzle.position.set(0, -0.3, 0.68);
+  head.add(muzzle);
+  const nose = ellipsoid(0.22, 0.15, 0.12, M.face, 12);
+  nose.position.set(0, -0.12, 0.76);
+  head.add(nose);
 
   for (const sx of [-1, 1]) {
-    const eye = ellipsoid(0.11, 0.12, 0.09, M.eye, 12);
-    eye.position.set(sx * 0.25, 0.1, 0.74);
+    const eye = ellipsoid(0.085, 0.085, 0.06, M.eye, 12);
+    eye.position.set(sx * 0.21, 0.13, 0.76);
     head.add(eye);
-    const pupil = ellipsoid(0.06, 0.08, 0.05, M.pupil, 10);
-    pupil.position.set(sx * 0.25, 0.09, 0.8);
+    const pupil = ellipsoid(0.055, 0.06, 0.04, M.pupil, 10);
+    pupil.position.set(sx * 0.21, 0.12, 0.8);
     head.add(pupil);
-    const nostril = ellipsoid(0.05, 0.05, 0.05, M.pupil, 8);
-    nostril.position.set(sx * 0.12, -0.24, 1.02);
+    const nostril = ellipsoid(0.045, 0.035, 0.04, M.pupil, 8);
+    nostril.position.set(sx * 0.1, -0.15, 0.85);
     head.add(nostril);
-    const ear = ellipsoid(0.07, 0.17, 0.14, M.skin, 10);
-    ear.position.set(sx * 0.66, 0.24, -0.05);
+    const ear = ellipsoid(0.06, 0.15, 0.12, M.face, 10);
+    ear.position.set(sx * 0.64, 0.2, -0.02);
     head.add(ear);
   }
 
@@ -333,7 +343,7 @@ export function buildApe(rex, f, hips, boneZ, body, sk) {
   jaw.position.set(0, -0.3, 0.35);
   head.add(jaw);
   rex.jaw = jaw;
-  const chin = ellipsoid(0.42, 0.26, 0.38, M.belly, 12);
+  const chin = ellipsoid(0.4, 0.24, 0.34, M.face, 12);
   chin.position.set(0, -0.14, 0.42);
   jaw.add(chin);
   const tongue = ellipsoid(0.2, 0.06, 0.28, M.tongue, 10);
@@ -413,15 +423,15 @@ export function buildApe(rex, f, hips, boneZ, body, sk) {
     const wrist = ellipsoid(0.3, 0.28, 0.3, M.skin, 10);
     wrist.position.set(0, -1.32, 0.08);
     elbow.add(wrist);
-    const hand = ellipsoid(0.34, 0.26, 0.46, M.belly, 12);
+    const hand = ellipsoid(0.36, 0.27, 0.48, M.face, 12);
     hand.position.set(0, -1.6, 0.22);
     elbow.add(hand);
     for (let k = -1; k <= 2; k++) {
-      const knuckle = ellipsoid(0.11, 0.11, 0.11, M.belly, 8);
+      const knuckle = ellipsoid(0.12, 0.12, 0.12, M.face, 8);
       knuckle.position.set((k - 0.5) * 0.17, -1.78, 0.4);
       elbow.add(knuckle);
     }
-    const thumb = ellipsoid(0.11, 0.1, 0.18, M.belly, 8);
+    const thumb = ellipsoid(0.12, 0.11, 0.19, M.face, 8);
     thumb.position.set(sx * 0.3, -1.66, 0.1);
     elbow.add(thumb);
 
