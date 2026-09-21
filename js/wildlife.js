@@ -399,6 +399,8 @@ class Critter {
     this.wingPhase = Math.random() * TAU;
     this.flapRate = 11;
     this.pitch = 0;
+    this.animSpeed = 0;
+    this.hopY = 0;
     this.target = new THREE.Vector3();
     this.wanderFor = 0;
     this.anger = 0;
@@ -571,8 +573,17 @@ class Critter {
     g.rotation.set(0, this.yaw, 0);
 
     const ease = Math.min(1, dt * 5);
-    this.gait += dt * (4 + speed * 0.5);
+    // Animation amplitudes follow a smoothed speed. The raw one twitches
+    // every frame as the steering and the world push the body around, and a
+    // twitching amplitude looks exactly like a twitching animal.
+    this.animSpeed += (speed - this.animSpeed) * Math.min(1, dt * 4);
+    const sp = this.animSpeed;
+    this.gait += dt * (4 + sp * 0.5);
     const bob = Math.sin(this.gait);
+    // Two footfalls per stride without the cusp of Math.abs(sin), whose
+    // derivative flips sign at every bounce - that kink is what read as a
+    // shake once it reached the head.
+    const hop = 0.5 - 0.5 * Math.cos(this.gait * 2);
 
     if (cfg.fly) {
       // the beat speeds up when it is cross, but the rate eases in rather
@@ -583,28 +594,35 @@ class Critter {
       for (let i = 0; i < this.parts.wings.length; i++) {
         this.parts.wings[i].rotation.z = (i ? -1 : 1) * (flap * 0.7 + 0.1);
       }
+      this.hopY = 0;
       g.position.y += bob * 0.22;
       const wantPitch = -Math.min(speed, 16) * 0.012 - (this.angry ? 0.18 : 0);
       this.pitch += (wantPitch - this.pitch) * ease;
       g.rotation.x = this.pitch;
     } else {
-      g.position.y = Math.abs(bob) * Math.min(0.22, speed * 0.035);
-      const swing = Math.min(0.9, 0.12 + speed * 0.09);
+      this.hopY = hop * Math.min(0.22, sp * 0.035);
+      g.position.y = this.hopY;
+      const swing = Math.min(0.9, 0.12 + sp * 0.09);
       for (let i = 0; i < this.parts.legs.length; i++) {
         const s = Math.sin(this.gait * 1.25 + i * Math.PI * (this.parts.legs.length > 2 ? 0.5 : 1));
         this.parts.legs[i].rotation.x = s * swing;
       }
-      for (const w of this.parts.wings) w.rotation.x = bob * Math.min(0.5, speed * 0.05);
+      for (const w of this.parts.wings) w.rotation.x = bob * Math.min(0.5, sp * 0.05);
     }
 
-    // head: bobs while walking, thrusts forward on a peck
+    // Head: a walking bird holds its head almost still and lets the body
+    // move under it, so most of the body's bounce is cancelled here rather
+    // than added to. It thrusts forward on a peck and pulls in on a tuck.
     const head = this.parts.head;
     if (head) {
       const base = head.userData.baseZ ?? (head.userData.baseZ = head.position.z);
       const baseY = head.userData.baseY ?? (head.userData.baseY = head.position.y);
+      // Applied straight, not eased: everything feeding it is already smooth,
+      // and a lag here would filter out the very counter-bob that steadies
+      // the head. hopY is world units, the head lives inside a scaled group.
       head.position.z = base + this.lunge * 0.55 - this.tuck * 0.7;
-      head.position.y = baseY + bob * 0.05 - this.tuck * 0.25;
-      head.rotation.x = this.lunge * 0.5;
+      head.position.y = baseY - (this.hopY || 0) * 0.72 / (cfg.scale || 1) - this.tuck * 0.25;
+      head.rotation.x = this.lunge * 0.5 - (this.hopY || 0) * 0.5;
     }
     for (const leg of this.parts.legs) leg.visible = this.tuck < 0.4;
 

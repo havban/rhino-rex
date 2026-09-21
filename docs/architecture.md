@@ -112,6 +112,21 @@ cycles stutter. Rates that switch outright (a bird getting angry, a wing
 opening on take-off) are eased toward their new value rather than snapped, for
 the same reason.
 
+Two more rules fall out of the same problem:
+
+- **Amplitudes follow a smoothed speed** (`animSpeed`), not the raw one. The
+  raw speed twitches every frame as steering and `world.resolve` push the body
+  about, and a twitching amplitude looks exactly like a twitching animal.
+- **No `Math.abs(sin)` for a two-per-stride bounce.** Its derivative flips
+  sign at every footfall, and that kink travels up the body and reads as a
+  shake. `0.5 - 0.5 * cos(2 × gait)` gives the same rhythm and is smooth
+  everywhere.
+
+A walking animal's head is then *stabilised* against the body: about 72 % of
+the bounce is cancelled in the head's local position, which is what real birds
+do and what stops the head jittering. Head swing ends up at 0.06 units while
+the body swings 0.22.
+
 ## Wildlife
 
 `js/wildlife.js` holds a fixed pool of nine `Critter`s managed by one
