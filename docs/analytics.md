@@ -41,11 +41,33 @@ game — or excludes it.
 Page views are deliberately **not** prefixed: their path is the real URL,
 which is how GoatCounter separates pages already.
 
+### The page itself is tracked twice, on purpose
+
+| | What it records | Why |
+| --- | --- | --- |
+| **Page view** (count.js) | the path with the **query stripped** | one page stays one row. `count.js` counts `pathname + search` by default, which splits this single page across every `?v=<build>` from an update reload, every `?stats=1`, and every share link |
+| **`url` event** (`Stats.landing()`) | the query, filtered | the query is still worth having — which build, which campaign — so it comes back as `rhino-rex/url?v=…`, or plain `rhino-rex/url` when there is none |
+
+The second one is an **event**, not a second page view. A second page view
+would double every visit and pageview figure on the dashboard; an event is
+counted separately and leaves the traffic numbers honest.
+
+Stripping is done by a `goatcounter.path` callback set in `index.html` before
+`count.js` loads — it does `window.goatcounter = window.goatcounter || {}` and
+hangs `count()` off the same object, so the setting survives. An explicitly
+passed path (every custom event) skips the callback, so events are unaffected.
+count.js also reports the raw query separately as `q` regardless.
+
+Only known parameters reach the `url` event (`v`, `stats`, `ref`, `utm_*`),
+each truncated to 40 characters. An arbitrary query would let anyone mint
+unlimited event names in the dashboard just by sharing a link.
+
 The names below are written without the prefix for readability; on the wire
 they all carry it, e.g. `run-start` is sent as `rhino-rex/run-start`.
 
 | Event | When |
 | --- | --- |
+| `url` / `url?v=…` | one per load: the query string the page was opened with, filtered |
 | `visitor-new` | first ever load from this browser |
 | `visitor-returning` | first load on a later day |
 | `hari-aktif-1 / 2-5 / 6-19 / 20+` | how many distinct days this device has played |

@@ -107,6 +107,32 @@ export function pageview() {
   if (window.__rrTrack) window.__rrTrack(location.pathname || '/', SITE_TITLE, false);
 }
 
+/**
+ * The query string, tracked separately and on purpose.
+ *
+ * The page view itself is counted with the query **stripped** (see the
+ * `goatcounter.path` callback in index.html), so one page stays one row no
+ * matter how many cache-busters and share links point at it. That would lose
+ * the query entirely, so it comes back here as its own event — an event, not
+ * a second page view, because a second page view would double every visit
+ * and pageview figure on the dashboard.
+ *
+ * Only known parameters survive. An arbitrary query would let anyone mint
+ * unlimited event names just by sharing a link.
+ */
+const KEEP_PARAMS = ['v', 'stats', 'ref', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content'];
+
+export function landing() {
+  let q = '';
+  try {
+    const src = new URLSearchParams(location.search);
+    const keep = new URLSearchParams();
+    for (const k of KEEP_PARAMS) if (src.has(k)) keep.set(k, String(src.get(k)).slice(0, 40));
+    q = keep.toString();
+  } catch { /* analytics must never break the game */ }
+  event(q ? `url?${q}` : 'url', q ? `Dibuka dengan parameter: ?${q}` : 'Dibuka tanpa parameter');
+}
+
 export function event(name, title) {
   deliver(EVENT_PREFIX + name, title || name, true);
 }

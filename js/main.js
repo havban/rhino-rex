@@ -143,8 +143,9 @@ class Game {
     };
     this.input.onLock = () => document.body.classList.add('locked');
 
-    Stats.install();     // GoatCounter counts the page view itself
+    Stats.install();     // GoatCounter counts the page view itself, query stripped
     Stats.pageview();
+    Stats.landing();     // ... and the query comes back as its own event
     Stats.trackVisitor();
     Stats.once(this.coarse ? 'device-touch' : 'device-desktop',
       this.coarse ? 'Perangkat sentuh' : 'Perangkat desktop');
