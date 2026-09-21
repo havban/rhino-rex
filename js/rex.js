@@ -685,9 +685,13 @@ export class Rex {
 
     this.speed = Math.hypot(this.vel.x, this.vel.z);
 
+    // Only the cannon swings the body onto the camera, because it is the one
+    // attack you aim. A bite or a breath comes out where the dinosaur is
+    // already facing - dragging the view to look around must not whip the
+    // body round with it. The tail spin does its own aiming through
+    // `attackYaw`, so it never wanted the camera either.
     let desiredYaw = this.yaw;
-    const spinning = this.attack?.type === 'tail';
-    if (breathing || (attacking && !spinning)) desiredYaw = camYaw;
+    if (this.attack?.type === 'fireball') desiredYaw = camYaw;
     else if (wish.lengthSq() > 0.01) desiredYaw = Math.atan2(wish.x, wish.z);
     let d = desiredYaw - this.yaw;
     while (d > Math.PI) d -= Math.PI * 2;

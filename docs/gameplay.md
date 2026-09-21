@@ -61,12 +61,26 @@ last has its weight cut to a quarter** — borrowed from kart racers, so the
 same thing does not keep turning up. With dynamite as the last pickup, a
 400-roll sample came out 24 % dynamite / 76 % mine.
 
-### Movement
+### Movement and where an attack goes
 
 WASD is camera-relative; the dinosaur turns to face where it is going. The
 camera drifts back behind the player 1.8 s after you stop dragging the view,
 faster while running — but never while strafing or reversing, because
 camera-relative movement plus naive recentring spins forever.
+
+Which means the camera and the body can point in different directions, and
+each attack has its own answer to that:
+
+| Attack | Goes where |
+| --- | --- |
+| 🦷 Bite | straight out of the body, wherever it happens to be facing |
+| 🔥 Fire breath | the same — turn with the stick to sweep it |
+| 🌀 Tail spin | onto the nearest rhino within 15 units, then all the way round |
+| ☄️ Fireball | the camera: it is the one attack you *aim*, so the body swings onto the view during its wind-up |
+
+Only the cannon turns the body to the camera. Bite and breath used to as
+well, which meant glancing sideways and tapping bite whipped the whole
+dinosaur round to face somewhere you never meant to attack.
 
 ## The rhinos
 
