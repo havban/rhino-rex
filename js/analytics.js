@@ -130,7 +130,10 @@ export function landing() {
     for (const k of KEEP_PARAMS) if (src.has(k)) keep.set(k, String(src.get(k)).slice(0, 40));
     q = keep.toString();
   } catch { /* analytics must never break the game */ }
-  event(q ? `url?${q}` : 'url', q ? `Dibuka dengan parameter: ?${q}` : 'Dibuka tanpa parameter');
+  // Nothing is sent for a plain URL. The page-view count is already the total
+  // number of loads, so a `url` event on every one of them would add no
+  // information while permanently sitting at the top of the event list.
+  if (q) event(`url?${q}`, `Dibuka dengan parameter: ?${q}`);
 }
 
 export function event(name, title) {

@@ -46,11 +46,16 @@ which is how GoatCounter separates pages already.
 | | What it records | Why |
 | --- | --- | --- |
 | **Page view** (count.js) | the path with the **query stripped** | one page stays one row. `count.js` counts `pathname + search` by default, which splits this single page across every `?v=<build>` from an update reload, every `?stats=1`, and every share link |
-| **`url` event** (`Stats.landing()`) | the query, filtered | the query is still worth having — which build, which campaign — so it comes back as `rhino-rex/url?v=…`, or plain `rhino-rex/url` when there is none |
+| **`url` event** (`Stats.landing()`) | the query, filtered | the query is still worth having — which build, which campaign — so it comes back as `rhino-rex/url?v=…` |
 
 The second one is an **event**, not a second page view. A second page view
 would double every visit and pageview figure on the dashboard; an event is
 counted separately and leaves the traffic numbers honest.
+
+It only fires when there **is** a query. The page-view count is already the
+total number of loads, so an event on every plain load would add nothing and
+would permanently sit at the top of the event list. Loads with parameters are
+the `url?…` events; everything else is the difference.
 
 Stripping is done by a `goatcounter.path` callback set in `index.html` before
 `count.js` loads — it does `window.goatcounter = window.goatcounter || {}` and
@@ -67,7 +72,7 @@ they all carry it, e.g. `run-start` is sent as `rhino-rex/run-start`.
 
 | Event | When |
 | --- | --- |
-| `url` / `url?v=…` | one per load: the query string the page was opened with, filtered |
+| `url?v=…` | the page was opened with a known query parameter (`v`, `stats`, `ref`, `utm_*`) |
 | `visitor-new` | first ever load from this browser |
 | `visitor-returning` | first load on a later day |
 | `hari-aktif-1 / 2-5 / 6-19 / 20+` | how many distinct days this device has played |
