@@ -218,12 +218,23 @@ the jump pad. Each beat is worth 10 units of lift, the ceiling is 24 units up,
 and in between beats you fall at 46 % of normal gravity, so you glide rather
 than drop. Landing gives the three beats back.
 
-Height is not free damage. **Every melee and breath attack measures its range
-from where you actually are**, altitude included, so hovering at 18 units puts
-a rhino six units away well outside a 7.2-unit bite. Tested: the same bite
-takes 26 HP from the ground and 0 from up there. The fireball still works from
-the air — it is lobbed, it arcs down, and it is the weapon with the four
-second cooldown. So wings buy you escape and repositioning, not a safe perch.
+Reach works the same way in both directions, and it is measured, not assumed.
+
+**Your attacks** fold your altitude into their range, so hovering at 18 units
+puts a rhino six units away well outside a 7.2-unit bite — the same bite takes
+26 HP from the ground and 0 from up there. The fireball still works from the
+air: it is lobbed, it arcs down, and it is the one with the four-second
+cooldown.
+
+**Their attacks** do too. A rhino chases along the ground under a flying
+player but cannot touch one: the charge reaches about 7 units up and the gore
+about 10, so from roughly ten units you are out of everything's way. Three
+rhinos charging a grounded player for five seconds took 9.6 HP; the same three
+against a player hovering at 16 for seven seconds took **nothing**. A low hop
+is still no escape, which is the point — you have to actually get up there.
+
+The exception is the birds. An angry 🐦 Burung climbs to your altitude and
+keeps coming, so the sky is safer, not safe.
 
 ## Arenas
 

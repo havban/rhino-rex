@@ -33,8 +33,9 @@ Semburkan api, gigit, dan sabetkan ekor untuk bertahan gelombang demi gelombang.
 - **Empat sosok pemburu** yang bisa dipilih di menu: 🦖 T-Rex, 🦅 **Rex Bersayap yang
   benar-benar bisa terbang** (lompat, lalu ketuk tombol lompat lagi di udara — tiga
   kepakan sebelum harus mendarat, jumlahnya tertera di tombol; di sela kepakan kamu
-  melayang turun pelan). Jangkauan serangan dihitung dari posisimu termasuk ketinggian,
-  jadi melayang tinggi membuatmu aman tapi seranganmu tidak sampai. 🦕 Gojira (kaiju
+  melayang turun pelan). Jangkauan dihitung dari posisimu termasuk ketinggian, dua arah:
+  seranganmu tidak sampai ke bawah, dan badak tidak bisa menyeruduk yang melayang tinggi
+  — hanya burung yang bisa naik mengejarmu. 🦕 Gojira (kaiju
   bertubuh tegak dengan tiga baris sirip punggung dari leher sampai ujung ekor), dan
   🦍 Kong (gorila raksasa: tanpa ekor, punuk bahu dengan punggung perak, wajah hitam
   berdahi tebal dan tengkorak bersirip, telinga kecil, telapak tangan hitam). Gojira dan

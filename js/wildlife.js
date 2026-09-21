@@ -487,7 +487,11 @@ class Critter {
       // charge the thing that hurt us
       want = toPlayer.clone().normalize();
       speed = cfg.speed * (cfg.rush && distP > 8 ? cfg.rush : 1);
-      if (distP < cfg.range + this.radius && this.attackCd <= 0) {
+      // Something on the ground cannot peck a flying player; a bird can, and
+      // climbs after one (see _cruise / the dive target below).
+      const gap = cfg.fly ? Math.abs(this.height - (player.y || 0)) : Math.max(0, (player.y || 0) - 2.2);
+      const reach = Math.hypot(distP, gap);
+      if (reach < cfg.range + this.radius && this.attackCd <= 0) {
         this.attackCd = cfg.attackCd;
         this.lunge = 1;
         if (canHarm && player.damage(cfg.damage, want.clone())) damage = cfg.damage;
@@ -535,7 +539,10 @@ class Critter {
       const rr = Math.hypot(this.pos.x, this.pos.z);
       const lim = WORLD.radius - 4;
       if (rr > lim) { this.pos.x *= lim / rr; this.pos.z *= lim / rr; }
-      const wanted = this.angry ? cfg.fly.dive : this._cruise();
+      // an angry bird climbs or drops to the player's own altitude
+      const wanted = this.angry
+        ? Math.min(cfg.fly.cruise[1] + 8, Math.max(cfg.fly.dive, (player.y || 0) + 1.2))
+        : this._cruise();
       this.height += (wanted - this.height) * Math.min(1, dt * 1.6);
     }
 

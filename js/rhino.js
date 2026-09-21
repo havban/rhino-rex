@@ -405,6 +405,11 @@ export class Rhino {
     const toRex = tmp.copy(rex.pos).sub(this.pos).setY(0);
     const dist = toRex.length();
     const dir = dist > 0.001 ? toRex.clone().divideScalar(dist) : new THREE.Vector3(0, 0, 1);
+    // A rhino gores what it can reach. It still chases along the ground under
+    // a flying player - it just cannot touch one, so height is measured into
+    // the distance every hit test uses.
+    const overhead = Math.max(0, (rex.y || 0) - 2.4);
+    const reach = Math.hypot(dist, overhead);
 
     let desiredSpeed = 0;
     let steer = null;
@@ -443,7 +448,7 @@ export class Rhino {
         this.chargeDir.lerp(dir, Math.min(1, dt * 0.55)).setY(0).normalize();
         if (Math.random() < dt * 30) fx?.dust(this._frontPoint(), 0.7 * this.scaleF);
         // hit the rex?
-        if (!this.hitThisCharge && dist < this.radius + 2.6) {
+        if (!this.hitThisCharge && reach < this.radius + 2.6) {
           this.hitThisCharge = true;
           const dealt = rex.damage(this.cfg.chargeDamage * this.dmgScale, dir);
           if (dealt) {
@@ -466,7 +471,7 @@ export class Rhino {
         desiredSpeed = 1.5;
         if (this.stateT > 0.35 && !this.hitThisCharge) {
           this.hitThisCharge = true;
-          if (dist < 7.5 && this._facing(dir, 0.55)) {
+          if (reach < 7.5 && this._facing(dir, 0.55)) {
             if (rex.damage(this.cfg.damage * this.dmgScale, dir)) { fx?.impact(rex.pos.clone().setY(2.6), 0xffa03c); fx?.shake(0.45); }
           }
         }
