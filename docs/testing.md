@@ -30,7 +30,7 @@ Useful extras: `--autoplay-policy=no-user-gesture-required` for audio tests.
 
 | Hook | Use |
 | --- | --- |
-| `window.__game` | the whole `Game`: `state`, `rex`, `rhinos`, `world`, `fx`, `mp`, `music`, `chase`, `input`, `cfg` |
+| `window.__game` | the whole `Game`: `state`, `rex`, `rhinos`, `wildlife`, `world`, `fx`, `mp`, `music`, `chase`, `input`, `cfg` |
 | `__game.input.scripted = true` | stop `sample()` clobbering fields you set from a test |
 | `__game.cfg` | the live tuning objects — change balance at runtime |
 | `window.__stats()` | open the owner stats panel |
@@ -38,6 +38,10 @@ Useful extras: `--autoplay-policy=no-user-gesture-required` for audio tests.
 | `window.__rrTrack` | capture analytics events instead of sending them |
 | `__game._saveRun()` / `_loadRun()` | write and read the resumable run directly |
 | `__game._revives` | how many free revives are left this run |
+| `__game.setArena(name)` | rebuild the world in another arena, mid-run if you like |
+| `__game.rex.setForm(name)` / `setSkin(name)` | swap hunter or colours in place |
+| `__game.wildlife.critters` | every animal, alive or waiting to respawn |
+| `critter._animate(dt)` | drive one animal's animation by hand at a fixed timestep |
 
 A typical arrangement: freeze the world, pose the actors, then assert.
 
@@ -186,6 +190,34 @@ Wrap that in an `http.createServer` and the browser can point at it with
 `window.__RR_API`, which is how the full client-to-Worker round trip was
 verified before anything touched production.
 
+### Animation smoothness
+
+Frame times under software rendering swing by 15× or more, so sampling during
+`requestAnimationFrame` cannot tell a jittery animation from a jittery
+renderer. Drive the animation by hand at a fixed timestep instead, with the
+kind of speed wobble a real critter has, and look at the **second** difference
+— a smooth curve has a small one, a cusp or a twitch does not.
+
+```js
+const dt = 1 / 60, ys = [];
+for (let i = 0; i < 300; i++) {
+  c.vel.set(6 + Math.sin(i * 0.31) * 1.6 + (Math.random() - 0.5) * 0.7, 0, 0);
+  c.phase += dt;
+  c._animate(dt);
+  c.root.updateWorldMatrix(true, false);
+  ys.push(c.parts.head.getWorldPosition(new THREE.Vector3()).y);
+}
+const d1 = ys.slice(1).map((v, i) => v - ys[i]);
+const d2 = d1.slice(1).map((v, i) => Math.abs(v - d1[i])).sort((a, b) => a - b);
+// worst / median is the number that matters: ~2 is smooth, 10+ is a stutter
+```
+
+### Cosmetic-only forms
+
+Any change to `js/rex.js` or `js/creatures.js` has to leave the four hunters
+identical in combat. Place a rhino in front, run `coneHit('bite')` and
+`coneHit('tail')` for each form, and check every one takes 26 then 21.
+
 ## Before shipping
 
 1. Every module imports cleanly (the `--input-type=module` check above).
@@ -194,7 +226,13 @@ verified before anything touched production.
 4. Responsive sweep if UI changed.
 5. Two-page co-op run if netcode changed.
 6. `renderer.info` sanity: draw calls and triangles have not jumped.
-7. If you changed the wave curve or scoring, update `spawnedThrough()` and
+   Switching arena or form repeatedly must leave `memory.geometries` and
+   `scene.children.length` where they started — both paths dispose and
+   rebuild, so a leak shows up immediately.
+7. If you touched a model or an animation: all four forms still bite for 26
+   and tail for 21, the lowest rigid point of each still sits on the ground,
+   and the head/limb second-difference ratio is still around 2.
+8. If you changed the wave curve or scoring, update `spawnedThrough()` and
    `maxScore()` in `worker/src/index.js` to match, and redeploy the Worker.
-8. Push, wait for the Actions run, then verify against the **live URL** —
+9. Push, wait for the Actions run, then verify against the **live URL** —
    remembering the 10-minute Pages cache (`?v=2` bypasses it).

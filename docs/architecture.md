@@ -8,9 +8,11 @@ index.html ─ import map ─→ js/main.js ─→ everything else
      ┌─────────────────────────┼──────────────────────────┐
      │                         │                          │
   simulation                rendering                  services
-  rex, rhino, fireball      world, geom, fx            net, multiplayer
-  world (collision)         camera                     leaderboard, scores
-  config (tuning)           music, audio               analytics
+  rex, creatures            world (arenas), geom, fx   net, multiplayer
+  rhino, wildlife           camera                     leaderboard, scores
+  fireball, mine            music, audio               analytics
+  world (collision)
+  config (tuning + content)
 ```
 
 There is no framework and no state container. `Game` in `js/main.js` owns
@@ -26,7 +28,8 @@ everything and passes what each system needs into its `update(dt)`.
 2. `_adaptResolution(dt)` — drops the device pixel ratio if frame time slips,
    raises it again when there is headroom.
 3. `_update(dt)`:
-   - world (scenery destruction, respawns, clouds), FX, pickups
+   - world (scenery destruction, respawns, clouds, motes), FX, pickups
+   - wildlife — runs in the menu too, but only allowed to bite while playing
    - input sample, camera look
    - fire breath, buffered attacks, `rex.update()` → returns a hit event
    - enemy updates (or replicated poses when a co-op guest)
@@ -129,10 +132,13 @@ the body swings 0.22.
 
 ## Wildlife
 
-`js/wildlife.js` holds a fixed pool of nine `Critter`s managed by one
-`Wildlife` instance. Each species is a procedural model (`chicken`, `dodo`,
-`bird`, `tortoise`) that returns the parts the animator touches — head, wings,
-legs — with everything else parented to the group.
+`js/wildlife.js` holds a fixed pool of `Critter`s managed by one `Wildlife`
+instance — fifteen on the high preset, scaled down to twelve and nine on
+medium and low, because a phone draws them too. Each species is a procedural
+model (`chicken`, `dodo`, `bird`, `tortoise`, `boar`, `monitor`) that returns
+the parts the animator touches — head, wings, legs — with everything else
+parented to the group. The pool is seeded with each species' `min` before the
+weighted roll fills the rest, so no run comes up with an empty sky.
 
 `Wildlife.update()` returns the damage the animals did to the player this
 frame, so `Game` can play the hurt feedback once. It runs in the menu too, and
@@ -264,4 +270,7 @@ Everything is `localStorage`, all keys prefixed `rr.`:
 | `rr.name` | last name entered |
 | `rr.stats` | lifetime play stats for the owner panel |
 | `rr.visit` | first seen / last seen / active days |
+| `rr.arena` | which arena to build |
+| `rr.form` | which hunter to play |
+| `rr.skin` | its colours (defaults to the form's own on a first pick) |
 | `rr.run` | the saved run offered as **▶ LANJUTKAN** |

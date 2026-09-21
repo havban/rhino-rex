@@ -62,6 +62,38 @@ The T-Rex's mouth is ~5.5 units up. A straight shot from there passes above a
 3-unit rhino. Solve the arc to a target point instead of picking a direction,
 and test damage cones flat (horizontally) rather than in true 3D.
 
+**An animal, or a wing, twitches or shakes as it moves.**
+Almost always `Math.sin(this.phase * rate)` where `rate` can change. `phase`
+grows for the whole run, so any wobble in the rate moves the argument by
+`phase × Δrate` — tens of radians. Integrate a dedicated phase instead
+(`this.gait += dt * rate`) and ease rates that switch outright. Two relatives
+of the same bug: `Math.abs(sin)` for a bounce has a kink at every footfall,
+and an amplitude scaled by the *raw* speed twitches because steering and
+`world.resolve` nudge the velocity every frame.
+
+**A flat surface disappears from certain angles.**
+A hand-built mesh (`BufferGeometry` + `computeVertexNormals`) is single-sided.
+The winged form's membrane vanished whenever you saw its underside, which from
+behind the player is most of the time. Give it `side: THREE.DoubleSide`.
+
+**A new creature floats above the ground, or sinks into it.**
+Its legs hang off the torso group, so a big `pose.body` tilt swings the feet
+out from under it; answer the tilt with `leg.hip`, then set `hipScale` from a
+measurement. Measure the **rigid** parts only: `geometry.boundingBox` on a
+`SkinnedMesh` is the bind pose, so a long bind-pose tail reads as two metres
+of underground creature that is not actually there.
+
+**A run starts with a tree filling the screen.**
+The chase boom sits about 20 units behind the player. `SCENERY.spawnClearing`
+has to be wider than that, and the player has to start inside it — a run that
+begins at the edge of the clearing puts the camera outside it.
+
+**Something hits the player while they are flying.**
+A range check using flat distance. Every attack — theirs as well as yours —
+has to fold the player's height into the distance it tests. The player's
+attacks were fixed first, which left rhinos goring a hovering T-Rex through
+its own shadow.
+
 ## Multiplayer
 
 **A guest sees twice as many rhinos as the host.**

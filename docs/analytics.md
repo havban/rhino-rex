@@ -51,6 +51,9 @@ attribute — and the module reads it from the DOM.
 | `perf-downscale` | the adaptive resolution had to drop — this device is struggling |
 | `open-coop` / `open-scores` / `open-help` | menu opened, once each per load |
 | `music-<ceria\|stomp\|chip\|synth>` | a track was chosen, once per style |
+| `arena-<padang\|vulkanik\|rawa>` | an arena was picked, once per arena |
+| `form-<rex\|bersayap\|gojira\|kong>` | a hunter was picked, once per form |
+| `skin-<jingga\|zamrud\|magma\|salju\|badai\|kelam>` | a skin was picked, once per skin |
 | `coop-host-room` / `coop-host-fail` | a room was created, or creation failed |
 | `coop-join-try` / `coop-join-ok` | join funnel |
 | `coop-join-fail-<kode-salah\|room-tutup\|room-penuh\|tuan-rumah-diam\|jaringan\|lain>` | why a join failed |

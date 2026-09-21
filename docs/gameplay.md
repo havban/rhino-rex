@@ -5,9 +5,10 @@ truth for balance. Change them there, never in the systems.
 
 ## The player
 
-A T-Rex with 100 HP, 100 fire meter, walking at 13 u/s and sprinting at 21 u/s.
-Health regenerates at 3.5/s but only after 5 seconds without being hit; the
-fire meter refills at 15/s continuously.
+100 HP, 100 fire meter, walking at 13 u/s and sprinting at 21 u/s. Health
+regenerates at 3.5/s but only after 5 seconds without being hit; the fire
+meter refills at 15/s continuously. These numbers are the same whichever
+hunter you picked — see [Hunters and skins](#hunters-and-skins).
 
 ### Weapons
 
@@ -18,17 +19,25 @@ fire meter refills at 15/s continuously.
 | 🌀 Tail spin | MMB / `K` | 21 | 10.2, **360°** | 1.5 s | Turns onto the nearest target, spins a full turn, knocks back 26 and stuns 1.1 s |
 | ☄️ Fireball | `R` / `E` | 58 direct + 34 splash | ~14–58 lobbed | **4.0 s** | Costs 40 fire; 7-unit blast with falloff, burn and knockback |
 
-Two details that matter:
+Three details that matter:
 
 - **The fire cone is tested flat.** The T-Rex's mouth is ~5.5 units up, so a
   true 3D cone sails over anything standing close. Damage uses a horizontal
   cone from the body; only the visuals come from the mouth.
+- **Height counts against reach.** Every melee and breath check folds the
+  player's altitude above 1.5 units into the distance it measures. On the
+  ground that is a no-op; it exists so the winged form cannot hover out of
+  danger and still land blows. The same rule governs what can hit *you* — see
+  [Flying](#flying).
 - **The tail spin is a visual yaw offset**, not a change to the player's
   facing. The camera and aim never rotate with it, so a 360° attack does not
   spin the screen.
 
-The cannon's long cooldown is deliberate: at 3 s it was simply the best button
-to press, so it is now a decision rather than part of a rotation.
+The cannon's cooldown is deliberate: at 3 s it was simply the best button to
+press, and at 6 s it felt dead, so 4 s makes it a decision rather than part of
+a rotation. Because four seconds is long enough to want to know where you are
+in it, the pad sweeps round like a clock hand, prints the seconds remaining,
+and flashes with a blip the moment it comes back.
 
 Attack presses are buffered for 0.28 s, so a press during another animation
 fires as soon as it can rather than being dropped.
@@ -139,7 +148,11 @@ field of view and the wider portrait framing for free — and it is
 size-aware, so at the same 57 units a calf is marked and a Matriarch is not. And when a wave is down to its last three, any rhino that is off
 screen gets an arrow at the screen edge pointing at it. The cap is deliberate:
 sixteen arrows would be noise, but hunting the final straggler across a
-150-unit arena is the moment you actually need help.
+150-unit arena is the moment you actually need help. Arrows ride an ellipse
+around the centre rather than the window frame — the frame puts them in the
+corners, which is where the joystick and the attack pads live — and on a short
+landscape screen an arrow that would still land on a pad walks in along its
+own bearing until it is clear.
 
 ## Wildlife
 

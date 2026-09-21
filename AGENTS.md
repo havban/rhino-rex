@@ -11,9 +11,11 @@ Full documentation lives in [`docs/`](docs/). Start with
 
 ## What this is
 
-**Rhino Rex** — a third-person 3D browser game. You are a T-Rex defending a
-sunny grassland against waves of charging rhinos. Live at
-<https://havban.github.io/rhino-rex/>, deployed from `main` by GitHub Actions.
+**Rhino Rex** — a third-person 3D browser game. You are a T-Rex (or a winged
+one, a kaiju, or a giant ape) defending one of three arenas against waves of
+charging rhinos, with a population of harmless-until-provoked wildlife
+underfoot. Live at <https://havban.github.io/rhino-rex/>, deployed from `main`
+by GitHub Actions.
 
 It is a **static site with no build step**. Open `index.html` through any web
 server and it runs. A small Cloudflare Worker backs the global leaderboard and
@@ -37,6 +39,14 @@ brokers the multiplayer handshake, but the game works fully without it.
    owner/player.
 5. **Comments explain *why*.** The code is readable enough to say what it does.
    Comment the reasoning, the constraint, or the bug being avoided.
+6. **Content choices stay cosmetic.** Arenas (`ARENAS`), skins (`SKINS`) and
+   hunter forms (`FORMS`) must not change reach, damage, speed or the
+   collision radius, or leaderboard entries stop being comparable. There is
+   exactly **one** deliberate exception, `FORMS.bersayap.flight`, and it is
+   paid for by the altitude rule below. If you add a second, say so loudly.
+
+   Re-measure it after any change to `js/rex.js` or `js/creatures.js`: every
+   form must bite for 26 and tail for 21.
 
 ## Licence
 
@@ -69,7 +79,8 @@ js/camera.js          third-person chase camera with auto-recentre
 js/input.js           keyboard + mouse + touch, normalised
 js/audio.js           procedural sound effects
 js/music.js           procedural music, 4 styles, adaptive layers
-js/fireball.js        the lobbed projectile
+js/fireball.js        the lobbed projectile (fireball and thrown dynamite)
+js/mine.js            the placed mine: arms, blinks, triggers on proximity
 js/scores.js          local leaderboard (localStorage)
 js/leaderboard.js     global leaderboard client (fails soft)
 js/net.js             WebRTC connection + data channels
@@ -95,8 +106,8 @@ chromium.launch({ args: [
 ```
 
 **`window.__game` is the test hook.** It exposes `state`, `rex`, `rhinos`,
-`world`, `fx`, `mp`, `music`, `chase`, `input` and `cfg` (the live tuning
-objects). Set `__game.input.scripted = true` to drive input from a test without
+`wildlife`, `world`, `fx`, `mp`, `music`, `chase`, `input` and `cfg` (the live
+tuning objects). Set `__game.input.scripted = true` to drive input from a test without
 `sample()` overwriting it.
 
 Other hooks: `window.__stats()` opens the owner stats panel, `window.__RR_API`
@@ -158,14 +169,37 @@ Each of these was a real bug. Re-introducing them is easy.
 | Multiplayer | Guests must not run wave logic; snapshots carry the host's `restTimer` and will otherwise wake a second, local wave. Always key players by message id, never by connection. |
 | Particles | Emission must be per-second (`rate * dt`), not per-frame, or the effect changes with frame rate. |
 | Balance vs backend | The Worker's anti-cheat re-implements the spawn and scoring formulas. Change `WAVES.count()` or the score maths and you must update `spawnedThrough()` / `maxScore()` in `worker/src/index.js` and redeploy, or the check silently loosens. |
+| Cyclic animation | Never `sin(accumulatedPhase * rate)` when `rate` can change — `phase` grows all run, so a speed twitch shifts the argument by `phase × Δrate`. Integrate instead: `gait += dt * rate`. This made every walk cycle and wingbeat stutter. |
+| Bounce shape | `Math.abs(sin)` for a two-per-stride hop has a sign-flipping derivative at every footfall. The kink travels up the body and reads as a head shake. Use `0.5 - 0.5·cos(2·gait)`. |
+| Animation amplitude | Scale amplitudes by a smoothed speed, not the raw one: steering and `world.resolve` make raw speed twitch every frame. |
+| Altitude and reach | Range checks must fold in the player's height — **both ways**. Player attacks did it first and a flying player still got gored, because the rhino's tests were flat distance. |
+| Single-sided meshes | A hand-built membrane with `computeVertexNormals` is invisible from its back face. A wing is seen from both sides; use `side: THREE.DoubleSide`. |
+| Pose vs legs | Legs hang off the torso group, so changing `pose.body` swings the feet out from under the creature. Answer a torso tilt with `leg.hip`, then measure the lowest rigid point — do not eyeball it. |
+| Skinned bounding boxes | `geometry.boundingBox` on a `SkinnedMesh` is the **bind pose**, so a footprint measured that way is nonsense for anything with a long tail. Exclude skinned meshes and measure the rigid parts. |
+| Spawn clearing | The chase boom sits ~20 units behind the player, so `SCENERY.spawnClearing` has to be wider than that or a run can start with a tree in the camera. |
 | Playwright | `addInitScript` runs on **every** navigation. `localStorage.clear()` in there wipes the state a reload was supposed to prove persisted — it faked two bug reports already. |
 | GoatCounter | It never counts `localhost`, so local testing cannot dirty the dashboard — and cannot verify tracking either. |
 
 ## Tuning
 
-`js/config.js` holds every gameplay number: `REX`, `ATTACK`, `FIREBALL`,
-`RHINO`, `WAVES`, `SCENERY`, `CAMERA`, `IMPACT`, `PROGRESS`, `WORLD`,
-`COLORS`. Difficulty lives in `WAVES` (`count`, `damageScale`, `dropChance`);
-revives and saved runs live in `PROGRESS`. Change
-balance there, not in the systems. `__game.cfg` points at the same objects, so
-you can tune live in the console before committing a value.
+`js/config.js` holds every gameplay number. Change balance there, not in the
+systems. `__game.cfg` points at the same objects, so you can tune live in the
+console before committing a value.
+
+**Balance:** `REX`, `ATTACK`, `FIREBALL`, `RHINO`, `WAVES`, `SCENERY`,
+`ITEMS`, `PROGRESS`, `IMPACT`, `WORLD`, `CAMERA`. Difficulty lives in `WAVES`
+(`count`, `damageScale`, `dropChance`); revives and saved runs in `PROGRESS`;
+the weapon drops and their Mario-Kart-style repeat weighting in `ITEMS`.
+
+**Content:** four tables that add things rather than tune them.
+
+| Table | Adds | Read by |
+| --- | --- | --- |
+| `ARENAS` | a place to fight: palette, fog, lights, ground texture, tree/fence/mote/pool styles | `js/world.js` |
+| `FORMS` | a hunter: which creature builder, girth/tail/head/arm dials, stance (`pose`, `leg`, `hipScale`, `scale`), wings, flight | `js/rex.js`, `js/creatures.js` |
+| `SKINS` | a colour set: body, belly, stripe, plate, wing, face, eye, pupil | both of the above |
+| `WILDLIFE` | a species: health, speed, bite, flee/rush behaviour, population caps and minimums | `js/wildlife.js` |
+
+Adding to any of them should be a new entry, not new code. If you find
+yourself editing a builder to add an arena or an animal, the table is missing
+a knob — add the knob.
