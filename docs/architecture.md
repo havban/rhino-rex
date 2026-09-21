@@ -130,6 +130,24 @@ the bounce is cancelled in the head's local position, which is what real birds
 do and what stops the head jittering. Head swing ends up at 0.06 units while
 the body swings 0.22.
 
+**Steering gets the same treatment.** A raw wish direction flips about — a
+wander target is reached, a threat moves, `world.resolve` shoves the body off
+course — and each flip used to reach the yaw as a snap of up to 0.42 rad in a
+single frame. Three rules now stand between the wish and the facing:
+
+1. the wish feeds a **filtered `heading`** rather than the yaw directly;
+2. the yaw change is clamped to a per-species **turn rate** (`WILDLIFE.kinds[k].turn`,
+   radians per second) so nothing can pivot in one frame;
+3. an animal whose actual movement falls below 30 % of what it is attempting
+   for 0.8 s is **stuck** — grinding into a tree — and picks somewhere else to
+   go instead of shuddering against it.
+
+Frequencies matter too: a 1.75 Hz full-amplitude wingbeat reads as a buzz
+rather than a flap. Birds beat at ~1.1 Hz with a skewed waveform
+(`sin(w + 0.38·sin w)` — quick downstroke, slower recovery) and their bodies
+rise on the downstroke rather than bobbing at walking-gait pace, which a
+flying animal has no business doing.
+
 ## Wildlife
 
 `js/wildlife.js` holds a fixed pool of `Critter`s managed by one `Wildlife`

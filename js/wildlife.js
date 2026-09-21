@@ -16,6 +16,11 @@ import { ellipsoid, capsule, cone, skinMaterial } from './geom.js';
 
 const TAU = Math.PI * 2;
 const rnd = (a, b) => a + Math.random() * (b - a);
+const wrapPi = (a) => {
+  while (a > Math.PI) a -= TAU;
+  while (a < -Math.PI) a += TAU;
+  return a;
+};
 
 // ---------------------------------------------------------------- models --
 // Each builder returns the parts the animator needs; everything else just
@@ -402,6 +407,8 @@ class Critter {
     this.animSpeed = 0;
     this.hopY = 0;
     this.target = new THREE.Vector3();
+    this.heading = new THREE.Vector3(0, 0, 1);   // filtered facing, not the raw wish
+    this.stuck = 0;
     this.wanderFor = 0;
     this.anger = 0;
     this.attackCd = 0;
@@ -428,6 +435,8 @@ class Critter {
     this.tuck = 0;
     this.vel.set(0, 0, 0);
     this.height = this.cfg.fly ? rnd(...this.cfg.fly.cruise) : 0;
+    this.heading.set(Math.sin(this.yaw), 0, Math.cos(this.yaw));
+    this.stuck = 0;
     this.root.visible = true;
     this.root.scale.setScalar(this.cfg.scale);
     this.root.rotation.set(0, this.yaw, 0);
@@ -525,26 +534,49 @@ class Critter {
       } else {
         this.wanderFor -= dt;
         const toT = this.target.clone().sub(this.pos).setY(0);
-        if (this.wanderFor <= 0 || toT.length() < 2.5) this._newWanderTarget();
-        else want = toT.normalize();
+        // Re-pick on arrival or when bored - and steer at the new target the
+        // same frame. Dropping steering for a frame let the velocity decay
+        // and made the animal hesitate every time it chose somewhere to go.
+        if (this.wanderFor <= 0 || toT.length() < 4) {
+          this._newWanderTarget();
+          toT.copy(this.target).sub(this.pos).setY(0);
+        }
+        if (toT.lengthSq() > 1e-4) want = toT.normalize();
       }
     }
 
-    // steer, with a little inertia so nothing snaps around
+    // Steering goes through a filtered heading rather than the raw wish. The
+    // raw one flips about: a target is reached, a threat moves, world.resolve
+    // shoves the body off course - and each flip used to reach the yaw as a
+    // snap. The heading eases, and the yaw is then limited to a real turn
+    // rate in radians per second, so nothing can ever pivot in one frame.
     if (want) {
+      this.heading.lerp(want, Math.min(1, dt * 3.5));
+      if (this.heading.lengthSq() < 1e-4) this.heading.copy(want);
+      this.heading.normalize();
       this.vel.x += (want.x * speed - this.vel.x) * Math.min(1, dt * 5);
       this.vel.z += (want.z * speed - this.vel.z) * Math.min(1, dt * 5);
-      this.yaw += Math.atan2(Math.sin(Math.atan2(want.x, want.z) - this.yaw),
-        Math.cos(Math.atan2(want.x, want.z) - this.yaw)) * Math.min(1, dt * 7);
+      const d = wrapPi(Math.atan2(this.heading.x, this.heading.z) - this.yaw);
+      const step = d * Math.min(1, dt * 7);
+      const cap = (cfg.turn || 3.4) * dt;
+      this.yaw += Math.max(-cap, Math.min(cap, step));
     } else {
       this.vel.multiplyScalar(Math.max(0, 1 - dt * 4));
     }
+    const wasX = this.pos.x, wasZ = this.pos.z;
     this.pos.x += this.vel.x * dt;
     this.pos.z += this.vel.z * dt;
 
     // ground animals bump into scenery; flyers are above all of it
     if (!cfg.fly) {
       world.resolve(this.pos, this.radius);
+      // Grinding into a tree: the body barely moves while the steering keeps
+      // aiming through it, and world.resolve pushes back every frame. Give up
+      // and go somewhere else instead of shuddering against it.
+      const moved = Math.hypot(this.pos.x - wasX, this.pos.z - wasZ);
+      const trying = Math.hypot(this.vel.x, this.vel.z) * dt;
+      this.stuck = (trying > 0.02 && moved < trying * 0.3) ? this.stuck + dt : 0;
+      if (this.stuck > 0.8 && !this.angry) { this._newWanderTarget(); this.stuck = 0; }
     } else {
       const rr = Math.hypot(this.pos.x, this.pos.z);
       const lim = WORLD.radius - 4;
@@ -586,16 +618,20 @@ class Critter {
     const hop = 0.5 - 0.5 * Math.cos(this.gait * 2);
 
     if (cfg.fly) {
-      // the beat speeds up when it is cross, but the rate eases in rather
-      // than snapping, so the wings never skip
-      this.flapRate += ((this.angry ? 17 : 11) - this.flapRate) * ease;
+      // The beat speeds up when it is cross, but the rate eases in rather
+      // than snapping. 1.75 Hz of full-amplitude sine read as a buzz, so the
+      // beat is slower and skewed - a quick downstroke, a slower recovery -
+      // which is both what a bird does and much easier for the eye to track.
+      this.flapRate += ((this.angry ? 11 : 7) - this.flapRate) * ease;
       this.wingPhase += dt * this.flapRate;
-      const flap = Math.sin(this.wingPhase);
+      const flap = Math.sin(this.wingPhase + 0.38 * Math.sin(this.wingPhase));
       for (let i = 0; i < this.parts.wings.length; i++) {
-        this.parts.wings[i].rotation.z = (i ? -1 : 1) * (flap * 0.7 + 0.1);
+        this.parts.wings[i].rotation.z = (i ? -1 : 1) * (flap * 0.78 + 0.1);
       }
       this.hopY = 0;
-      g.position.y += bob * 0.22;
+      // the body rises on the downstroke instead of bobbing at walking pace:
+      // a flyer has no gait, and the gait rate was jittering it vertically
+      g.position.y += Math.sin(this.wingPhase - 0.7) * 0.16;
       const wantPitch = -Math.min(speed, 16) * 0.012 - (this.angry ? 0.18 : 0);
       this.pitch += (wantPitch - this.pitch) * ease;
       g.rotation.x = this.pitch;

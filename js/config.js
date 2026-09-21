@@ -236,33 +236,33 @@ export const WILDLIFE = {
     ayam: {
       label: 'Ayam', max: 4, min: 2, weight: 3,
       hp: 20, speed: 8.5, scale: 2.0, radius: 0.8, hitY: 1.5,
-      damage: 4, range: 3.0, attackCd: 1.1, flee: true,
+      damage: 4, range: 3.0, attackCd: 1.1, flee: true, turn: 4.5,
     },
     dodo: {
       label: 'Dodo', max: 3, min: 1, weight: 2,
       hp: 70, speed: 5.6, scale: 1.9, radius: 1.1, hitY: 2.3,
-      damage: 10, range: 3.6, attackCd: 1.7, flee: true, rush: 1.7,
+      damage: 10, range: 3.6, attackCd: 1.7, flee: true, rush: 1.7, turn: 2.6,
     },
     burung: {
       label: 'Burung', max: 5, min: 2, weight: 3.4,
       hp: 14, speed: 14, scale: 1.7, radius: 0.8, hitY: 0.8,
-      damage: 5, range: 3.2, attackCd: 2.0, flee: true,
+      damage: 5, range: 3.2, attackCd: 2.0, flee: true, turn: 2.2,
       fly: { cruise: [7, 13], dive: 2.6 },
     },
     kurakura: {
       label: 'Kura-kura', max: 2, min: 1, weight: 1.2,
       hp: 120, speed: 2.2, scale: 2.0, radius: 1.0, hitY: 1.2,
-      damage: 8, range: 2.8, attackCd: 1.6, flee: false, armor: 0.55,
+      damage: 8, range: 2.8, attackCd: 1.6, flee: false, armor: 0.55, turn: 1.2,
     },
     babi: {
       label: 'Babi Hutan', max: 3, min: 1, weight: 2.2,
       hp: 85, speed: 9.5, scale: 1.7, radius: 1.0, hitY: 1.6,
-      damage: 11, range: 3.2, attackCd: 1.5, flee: true, rush: 1.9,
+      damage: 11, range: 3.2, attackCd: 1.5, flee: true, rush: 1.9, turn: 2.4,
     },
     biawak: {
       label: 'Biawak', max: 3, min: 1, weight: 2,
       hp: 50, speed: 11, scale: 1.6, radius: 0.9, hitY: 0.9,
-      damage: 7, range: 3.4, attackCd: 1.3, flee: true,
+      damage: 7, range: 3.4, attackCd: 1.3, flee: true, turn: 3.2,
     },
   },
 };

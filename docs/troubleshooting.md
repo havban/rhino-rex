@@ -71,6 +71,14 @@ of the same bug: `Math.abs(sin)` for a bounce has a kink at every footfall,
 and an amplitude scaled by the *raw* speed twitches because steering and
 `world.resolve` nudge the velocity every frame.
 
+**An animal shudders while deciding where to go.**
+Steering, not animation. Feed the raw wish into a filtered `heading` and clamp
+the yaw change to a per-species turn rate, or a target being reached — or
+`world.resolve` pushing the body out of a tree it is walking into — arrives as
+a one-frame pivot. Watch for the grinding case too: an animal that keeps
+steering into an obstacle moves nowhere while the collision push-back jiggles
+its position, and its heading with it. `Critter.stuck` gives up after 0.8 s.
+
 **A flat surface disappears from certain angles.**
 A hand-built mesh (`BufferGeometry` + `computeVertexNormals`) is single-sided.
 The winged form's membrane vanished whenever you saw its underside, which from
