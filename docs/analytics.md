@@ -32,6 +32,18 @@ attribute — and the module reads it from the DOM.
 
 ### Events
 
+Every custom event is namespaced **`rhino-rex/`** (`EVENT_PREFIX` in
+`js/analytics.js`). The GoatCounter site is shared with other pages, so an
+unprefixed `wave-5` or `open-scores` would be indistinguishable from anything
+else sending the same name; with the prefix, one dashboard filter isolates the
+game — or excludes it.
+
+Page views are deliberately **not** prefixed: their path is the real URL,
+which is how GoatCounter separates pages already.
+
+The names below are written without the prefix for readability; on the wire
+they all carry it, e.g. `run-start` is sent as `rhino-rex/run-start`.
+
 | Event | When |
 | --- | --- |
 | `visitor-new` | first ever load from this browser |

@@ -27,6 +27,18 @@
 const SITE_TITLE = 'Rhino Rex';
 const SCRIPT_TIMEOUT = 6000;     // if count.js never arrives, fall back to a pixel
 
+/**
+ * Every custom event is namespaced. The GoatCounter site is shared with other
+ * pages, and an unprefixed `wave-5` or `open-scores` is indistinguishable
+ * from anything else that happens to send the same name. A path-shaped
+ * prefix also means the dashboard can filter the whole game out or in with
+ * one term.
+ *
+ * Page views are *not* prefixed: their path is the real URL, which is how
+ * GoatCounter tells pages apart already.
+ */
+const EVENT_PREFIX = 'rhino-rex/';
+
 let blocked = false;
 const queue = [];
 
@@ -96,8 +108,11 @@ export function pageview() {
 }
 
 export function event(name, title) {
-  deliver(name, title || name, true);
+  deliver(EVENT_PREFIX + name, title || name, true);
 }
+
+/** The namespace the dashboard can filter on. Exported for tests. */
+export const prefix = EVENT_PREFIX;
 
 // Events that describe a session rather than a moment - which device, which
 // menus were opened - must fire at most once per page load, or a curious
@@ -248,7 +263,7 @@ export function renderPanel(el) {
       ${Object.entries(w).map(([k, v]) => row(`&nbsp;&nbsp;${k}`, `${v} (${Math.round(v / totalHits * 100)}%)`)).join('')}
     </table>
     <button id="stats-reset">Reset statistik</button>
-    <p>${endpoint() ? `Kiriman agregat: ${endpoint()}` : 'Kiriman agregat: nonaktif (tag GoatCounter tidak ada)'}</p>`;
+    <p>${endpoint() ? `Kiriman agregat: ${endpoint()} <br>Awalan event: <code>${EVENT_PREFIX}</code>` : 'Kiriman agregat: nonaktif (tag GoatCounter tidak ada)'}</p>`;
   el.querySelector('#stats-close').onclick = () => el.classList.add('hidden');
   el.querySelector('#stats-reset').onclick = () => { resetStats(); renderPanel(el); };
 }
