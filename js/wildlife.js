@@ -391,6 +391,14 @@ class Critter {
     this.vel = new THREE.Vector3();
     this.yaw = Math.random() * TAU;
     this.phase = Math.random() * TAU;
+    // Gait and wingbeat are integrated at their current rate. Multiplying an
+    // already-accumulated phase by a speed-dependent rate makes the argument
+    // jump every time the speed twitches, which is what made the flapping
+    // and the walk stutter.
+    this.gait = Math.random() * TAU;
+    this.wingPhase = Math.random() * TAU;
+    this.flapRate = 11;
+    this.pitch = 0;
     this.target = new THREE.Vector3();
     this.wanderFor = 0;
     this.anger = 0;
@@ -562,19 +570,29 @@ class Critter {
     g.position.set(this.pos.x, this.height, this.pos.z);
     g.rotation.set(0, this.yaw, 0);
 
-    const bob = Math.sin(this.phase * (4 + speed * 0.5));
+    const ease = Math.min(1, dt * 5);
+    this.gait += dt * (4 + speed * 0.5);
+    const bob = Math.sin(this.gait);
+
     if (cfg.fly) {
-      const flap = Math.sin(this.phase * (this.angry ? 16 : 9));
+      // the beat speeds up when it is cross, but the rate eases in rather
+      // than snapping, so the wings never skip
+      this.flapRate += ((this.angry ? 17 : 11) - this.flapRate) * ease;
+      this.wingPhase += dt * this.flapRate;
+      const flap = Math.sin(this.wingPhase);
       for (let i = 0; i < this.parts.wings.length; i++) {
         this.parts.wings[i].rotation.z = (i ? -1 : 1) * (flap * 0.7 + 0.1);
       }
       g.position.y += bob * 0.22;
-      g.rotation.x = -this.vel.length() * 0.012 - (this.angry ? 0.18 : 0);
+      const wantPitch = -Math.min(speed, 16) * 0.012 - (this.angry ? 0.18 : 0);
+      this.pitch += (wantPitch - this.pitch) * ease;
+      g.rotation.x = this.pitch;
     } else {
       g.position.y = Math.abs(bob) * Math.min(0.22, speed * 0.035);
+      const swing = Math.min(0.9, 0.12 + speed * 0.09);
       for (let i = 0; i < this.parts.legs.length; i++) {
-        const s = Math.sin(this.phase * (5 + speed * 0.7) + i * Math.PI * (this.parts.legs.length > 2 ? 0.5 : 1));
-        this.parts.legs[i].rotation.x = s * Math.min(0.9, 0.12 + speed * 0.09);
+        const s = Math.sin(this.gait * 1.25 + i * Math.PI * (this.parts.legs.length > 2 ? 0.5 : 1));
+        this.parts.legs[i].rotation.x = s * swing;
       }
       for (const w of this.parts.wings) w.rotation.x = bob * Math.min(0.5, speed * 0.05);
     }

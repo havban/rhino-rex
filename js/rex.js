@@ -51,6 +51,9 @@ export class Rex {
     this.attack = null;
     this.attackYaw = 0;       // visual body twist during the tail spin
     this.cooldown = { bite: 0, tail: 0, fireball: 0 };
+    this.wingPhase = 0;           // integrated separately from the walk cycle
+    this.wingFold = 1;            // 1 = tucked against the ribs, 0 = spread
+    this.wingRate = 2.4;
     this.flaps = 0;               // wing beats left before this one has to land
     this.flapCd = 0;
     this.flapKick = 0;
@@ -746,13 +749,21 @@ export class Rex {
 
     // wings: a lazy idle beat that turns into real flapping off the ground
     if (this.wings && this.wings.length) {
+      // Same rule as the birds: integrate the beat at its current rate. The
+      // walk phase is already speed-scaled, so multiplying it again snapped
+      // the wings to a new position the instant you left the ground.
       const air = this.grounded ? 0 : 1;
-      const beat = Math.sin(this.phase * (air ? 2.6 : 0.9)) * (1 + this.flapKick * 1.5);
+      this.wingRate += ((air ? 7.5 : 2.4) - this.wingRate) * Math.min(1, dt * 6);
+      this.wingPhase += dt * this.wingRate;
+      const beat = Math.sin(this.wingPhase) * (1 + this.flapKick * 1.5);
       for (const w of this.wings) {
         // Folded against the ribs on the ground, held out level in the air
         // with a shallow beat - a full-amplitude flap read as two sails.
         const up = beat * (air ? 0.42 : 0.1);
-        const fold = air ? 0 : 1 - Math.min(stride, 1) * 0.25;
+        // ease the fold too: snapping straight from tucked to spread in one
+        // frame is a pop, not a wingbeat
+        this.wingFold += ((air ? 0 : 1 - Math.min(stride, 1) * 0.25) - this.wingFold) * Math.min(1, dt * 9);
+        const fold = this.wingFold;
         w.wing.rotation.z = w.sx * (0.16 + up + fold * 1.0);
         w.wing.rotation.y = w.sx * (air ? -0.14 : fold * 1.15);
         w.wing.rotation.x = up * 0.2 - fold * 0.3;

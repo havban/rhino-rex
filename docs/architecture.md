@@ -94,6 +94,24 @@ collision radius still come from `ATTACK`/`REX`, never from the model — and
 since every melee and breath check now folds the player's altitude into its
 range, a flyer gains height rather than free hits.
 
+## Animating on a wobbling frame rate
+
+One rule, learned the hard way, applies to every cycle in the game: **integrate
+a phase at the current rate, never multiply an accumulated phase by a rate that
+can change.**
+
+```js
+this.gait += dt * (4 + speed * 0.5);   // right
+Math.sin(this.phase * (4 + speed * 0.5));  // wrong
+```
+
+The second form looks equivalent but is not: `phase` grows all run, so a small
+wobble in `speed` moves the sine's argument by `phase × Δrate` — tens of
+radians after a minute of play. That is what made the birds and the walk
+cycles stutter. Rates that switch outright (a bird getting angry, a wing
+opening on take-off) are eased toward their new value rather than snapped, for
+the same reason.
+
 ## Wildlife
 
 `js/wildlife.js` holds a fixed pool of nine `Critter`s managed by one
